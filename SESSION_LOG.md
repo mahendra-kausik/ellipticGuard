@@ -9,12 +9,10 @@ Single source of truth for "where are we?" Update at the end of every session an
 - **Last gate passed:** Layer 1 — Data ingestion & integrity
 - **Next action:** Read `PROJECT_PLAN.md` §6 Layer 2. Build `make_temporal_split()` (train 1–34, val carved from 30–34, test 35–49) + EDA + the no-cross-time-step-edges test.
 - **Blockers / open questions:**
-  - The owner's preprocessing notebook (`notebooks/01_Elliptic_Preprocessing.ipynb`) uses a **different** split (train T1–34, val T35–36, test T37–49) than `PROJECT_PLAN.md` (train T1–34, val carved from the *tail* of train T30–34, test T35–49). This is a Layer 2 concern, not fixed here — when Layer 2 starts, treat `PROJECT_PLAN.md`'s partition as authoritative (Directive 4) and log the notebook's differing split as a corrected bug in `DECISIONS.md`, per the "using the owner's notebooks" rule.
+  - The preprocessing notebook (`notebooks/01_Elliptic_Preprocessing.ipynb`) uses a **different** split (train T1–34, val T35–36, test T37–49) than `PROJECT_PLAN.md` (train T1–34, val carved from the *tail* of train T30–34, test T35–49). Owner has confirmed this notebook was reused from a separate prior project on the same dataset, not authored for EllipticGuard — its split is stale reference material, not a bug to diagnose. Claude Code may edit the notebook freely. When Layer 2 starts, implement `make_temporal_split()` per `PROJECT_PLAN.md`'s partition (authoritative) and update/replace the notebook's split logic to match; no `DECISIONS.md` "corrected bug" entry needed since this isn't an owner error, just a straightforward implementation to build.
 
-### Owner action items — things Claude Code cannot do (also surfaced in chat, per CLAUDE.md)
-> Claude Code refreshes this list at the end of each layer and **removes items once completed** — only open items remain below.
-- [ ] Run `dvc push` once to send `data/raw/*` and `data/processed/*` to the Google Drive remote (this session did not push binary data anywhere; requires your Drive auth).
-- [ ] (Layer 11, later) Create a free Hugging Face account + a Space, and — if you want a hosted MLflow tracking server instead of the local file store — set that up too.
+### Owner action items — things Claude Code cannot do
+_(none right now — nothing blocking Layer 2)_
 
 ---
 

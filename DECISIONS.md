@@ -167,3 +167,21 @@ Entries D-001–D-012 are pre-seeded from planning. Claude Code appends D-013+ d
 - **Alternatives Considered:** Drop unknown rows immediately in Layer 1 — rejected; matches a mistake flagged in the owner's preprocessing notebook, where dropping unknowns early was found to remove ~85% of edges.
 - **Tradeoffs / risks:** Every consumer of the assembled node table must remember to filter `label.notna()` for supervised work. Mitigation: documented here and will be enforced by `make_temporal_split()` in Layer 2.
 - **Supersedes:** —
+
+## D-017 — `pyOpenSSL`/`cryptography` pinned to `24.2.1`/`43.0.3` in `.venv`
+- **Date / Layer:** Post-Layer-1 (environment fix, not tied to a specific layer)
+- **Context:** Attempted `dvc push` to exercise the Google Drive remote; it failed immediately with `module 'lib' has no attribute 'X509_V_FLAG_NOTIFY_POLICY'` — a known incompatibility between `pydrive2` (via DVC's gdrive remote) and newer `cryptography` releases (breaks starting ~v42+) that ships with a `pyOpenSSL` too old to match.
+- **Decision:** Pinned `pyopenssl==24.2.1` and `cryptography==43.0.3` — the newest pair that satisfies both `pydrive2`'s ceiling (`pyOpenSSL<=24.2.1`) and `mlflow`'s floor (`cryptography>=43.0.0`).
+- **Why:** Needed a version pair both packages can agree on; a first attempt (`pip install -U pyopenssl`) over-corrected to `cryptography 49.0.0`/`pyopenssl 26.3.0`, which broke both `mlflow` and `pydrive2`'s constraints instead of fixing them.
+- **Alternatives Considered:** Leaving versions unpinned and re-resolving — rejected, produced the broken pair above; downgrading `mlflow` — rejected as unnecessary and riskier than pinning two small crypto libs.
+- **Tradeoffs / risks:** `asyncssh` (unrelated to this pipeline, present as a transitive dependency of some tool) now wants `cryptography>=48.0.1` and shows a resolver warning — not used anywhere in EllipticGuard's code paths, so left as-is. Revisit this pin if a future dependency add creates a real conflict.
+- **Supersedes:** —
+
+## D-018 — `dvc push` to Google Drive remains unauthenticated; not a Layer 1/2 blocker
+- **Date / Layer:** Post-Layer-1
+- **Context:** After fixing D-017's SSL issue, `dvc push` reached Google's OAuth step and was blocked by Google itself ("This app tried to access sensitive info... blocked to keep your account safe") — DVC's default shared OAuth client for gdrive is not verified for sensitive-scope (Drive) access under the owner's account security settings.
+- **Decision:** Do not chase this further right now. `PROJECT_PLAN.md`'s Layer 1 gate only requires the assembled data to be **DVC-tracked locally** (`dvc.lock` md5 hashes) — already satisfied — not pushed to a remote. Remote push is deferred until it's actually needed (e.g., reproducibility from a clean clone, or before Layer 11 deployment).
+- **Why:** Fixing the Google OAuth block requires the owner to create their own Google Cloud OAuth client (Drive API + Desktop-app credentials) — an owner-only action, and not something blocking current work. Chasing it now would violate the "don't pre-populate tasks for later layers" rule just added to `CLAUDE.md`.
+- **Alternatives Considered:** Push now using the shared client anyway — not possible, Google itself refuses the flow, not a code fix.
+- **Tradeoffs / risks:** Data/model artifacts exist only locally + in git-tracked `dvc.lock` hashes until the owner sets up their own OAuth client. Acceptable for now; revisit before any layer that needs the remote populated (clean-clone reproduction, deployment).
+- **Supersedes:** —

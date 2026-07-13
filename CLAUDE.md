@@ -45,13 +45,14 @@ The owner is a final-year CS student putting this on a Data Science resume. **Th
 
 ---
 
-## Owner action items — always surface in chat
-Anything the owner must do that Claude Code cannot (set env vars / keys / secrets, `dvc push`, create accounts, authenticate a push, external setup): **state it directly in the chat reply, not only in `SESSION_LOG.md`.** The `SESSION_LOG.md` list is the durable record; the chat message is how the owner actually finds out. When such an item is completed, **remove it from the `SESSION_LOG.md` action-items list** (don't leave a growing pile of `[x]` lines).
-
 ## Working style
 - **Code up the entire layer (or the current subpart) in one pass, then present it for review.** Do not stop after each function to ask for confirmation. Deliver the whole working layer, then summarize.
 - After the layer is written, **run its tests and print the sanity checks** (shapes, class balance, time-step ranges, null counts) so correctness is visible in your summary. Anything that touches data partitioning, labels, or feature computation must show a sanity check.
 - Keep functions pure and testable. Every layer adds at least one `pytest` test.
+
+## Layer start (run before starting the work on a layer)
+1. Briefly tell the owner what is going to be implemented in this layer
+2. Inform the owner of all actions he must complete from the "Owner action items" of `SESSION_LOG.md`
 
 ## Session end (run whenever a work session stops — even mid-layer)
 1. `SESSION_LOG.md` — mark the layer status, record what changed, and set the next action so the next session can pick up exactly where this one left off.
@@ -59,7 +60,7 @@ Anything the owner must do that Claude Code cannot (set env vars / keys / secret
 
 ## Layer end (run when a layer's gate is reached)
 1. Run the layer's tests; gather gate evidence (test output, metric, artifact path).
-2. Refresh the "Owner action items" section of `SESSION_LOG.md` for the next layer.
+2. Refresh the "Owner action items" section of `SESSION_LOG.md`: remove items that are now complete, and list **only** the tasks the owner must do for the layer about to start. Do **not** pre-populate tasks for later layers — add each one when its layer begins.
 3. Commit and push to GitHub with a clear message (e.g., `Layer 3: baseline models + AUC-PR eval`).
 4. End the message with the exact completion line from Directive 1.
 
