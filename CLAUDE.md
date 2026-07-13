@@ -45,6 +45,9 @@ The owner is a final-year CS student putting this on a Data Science resume. **Th
 
 ---
 
+## Owner action items — always surface in chat
+Anything the owner must do that Claude Code cannot (set env vars / keys / secrets, `dvc push`, create accounts, authenticate a push, external setup): **state it directly in the chat reply, not only in `SESSION_LOG.md`.** The `SESSION_LOG.md` list is the durable record; the chat message is how the owner actually finds out. When such an item is completed, **remove it from the `SESSION_LOG.md` action-items list** (don't leave a growing pile of `[x]` lines).
+
 ## Working style
 - **Code up the entire layer (or the current subpart) in one pass, then present it for review.** Do not stop after each function to ask for confirmation. Deliver the whole working layer, then summarize.
 - After the layer is written, **run its tests and print the sanity checks** (shapes, class balance, time-step ranges, null counts) so correctness is visible in your summary. Anything that touches data partitioning, labels, or feature computation must show a sanity check.

@@ -11,16 +11,10 @@ Single source of truth for "where are we?" Update at the end of every session an
 - **Blockers / open questions:**
   - The owner's preprocessing notebook (`notebooks/01_Elliptic_Preprocessing.ipynb`) uses a **different** split (train T1–34, val T35–36, test T37–49) than `PROJECT_PLAN.md` (train T1–34, val carved from the *tail* of train T30–34, test T35–49). This is a Layer 2 concern, not fixed here — when Layer 2 starts, treat `PROJECT_PLAN.md`'s partition as authoritative (Directive 4) and log the notebook's differing split as a corrected bug in `DECISIONS.md`, per the "using the owner's notebooks" rule.
 
-### Owner action items — do BEFORE this layer starts (things Claude Code cannot do)
-> Claude Code refreshes this list at the end of each layer for the next one. These are steps that need the owner's hands (accounts, secrets, uploads, external setup).
-- [x] Create a GitHub repo and connect it — remote `origin` set to `https://github.com/mahendra-kausik/ellipticGuard.git`; owner must push (or confirm push) since this session did not verify remote push access/credentials.
-- [x] Confirm Python 3.11+ is installed locally — Python 3.13.3 confirmed, venv created at `.venv/`.
-- [x] Decide the DVC remote — Google Drive folder ID present in `.env` (`GDRIVE_FOLDER_ID`) and wired into `.dvc/config.local` (git-ignored) via `dvc remote add -d --local`.
-- [x] (Layer 1) Elliptic CSVs are already in place at `data/raw/` — no download needed; loaded and DVC-tracked via the `assemble` stage.
-- [ ] Owner should verify `git push -u origin main` and subsequent pushes succeed with their GitHub credentials (this session cannot authenticate interactively).
-- [ ] Owner should run `dvc push` once to send `data/raw/*` and `data/processed/*` to the Google Drive remote (this session did not push binary data anywhere).
-- [ ] (Later) Create a free Hugging Face account + a Space (Layer 11) and a free MLflow-compatible setup if you choose a hosted tracking server.
-- [x] Fill `.env` from `.env.example` with required keys/IDs — done; `.env` confirmed git-ignored, never staged.
+### Owner action items — things Claude Code cannot do (also surfaced in chat, per CLAUDE.md)
+> Claude Code refreshes this list at the end of each layer and **removes items once completed** — only open items remain below.
+- [ ] Run `dvc push` once to send `data/raw/*` and `data/processed/*` to the Google Drive remote (this session did not push binary data anywhere; requires your Drive auth).
+- [ ] (Layer 11, later) Create a free Hugging Face account + a Space, and — if you want a hosted MLflow tracking server instead of the local file store — set that up too.
 
 ---
 
