@@ -1,2 +1,13 @@
 # dvc.yaml — pipeline stages added incrementally, one per layer.
-stages: {}
+stages:
+  assemble:
+    cmd: python pipelines/assemble.py
+    deps:
+      - data/raw/elliptic_txs_features.csv
+      - data/raw/elliptic_txs_classes.csv
+      - data/raw/elliptic_txs_edgelist.csv
+      - src/data/loaders.py
+      - pipelines/assemble.py
+    outs:
+      - data/processed/nodes.parquet
+      - data/processed/edges.parquet

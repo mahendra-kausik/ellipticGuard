@@ -149,3 +149,21 @@ Entries D-001–D-012 are pre-seeded from planning. Claude Code appends D-013+ d
 - **Alternatives Considered:** Pin to a specific 3.11 interpreter via pyenv/similar — unnecessary since 3.13 installed cleanly.
 - **Tradeoffs / risks:** If a Layer-1+ dependency later breaks on 3.13, revisit and pin more tightly then.
 - **Supersedes:** —
+
+## D-015 — 165-vs-166 feature count reconciled: `feat_0..feat_164` + separate `time_step` column
+- **Date / Layer:** Layer 1
+- **Context:** PROJECT_PLAN.md flagged 165 vs 166 as an item to confirm, not assume, at load time.
+- **Decision:** Confirmed at runtime: `elliptic_txs_features.csv` has 167 raw columns (no header) = `txId` + `time_step` + 165 feature columns. We keep `time_step` as its own named column and name the remaining 165 as `feat_0..feat_164`. The paper's "166 features" figure counts `time_step` itself as the first local feature; our column layout is the same data, just with `time_step` split out and named instead of left as `feat_0`.
+- **Why:** Loaders in Layer 2+ (temporal split, per-step graphs) need to filter/group by time step constantly — leaving it unnamed inside a generic `feat_i` block would make every downstream call site index into the array positionally instead of by name, which is more error-prone to get right and to review.
+- **Alternatives Considered:** Match the owner's preprocessing notebook exactly, which also separates `time_step` from `feat_0..feat_164` — no divergence found; naming here already agrees with the notebook.
+- **Tradeoffs / risks:** None — this is a naming/shape reconciliation, not a modeling choice. Any code that expects "166 raw feature columns" must know one of those 166 is `time_step`.
+- **Supersedes:** —
+
+## D-016 — Unknown-labeled nodes kept in the assembled node table, not dropped
+- **Date / Layer:** Layer 1
+- **Context:** ~157,205 of 203,769 nodes have `class == "unknown"`. Layer 1 only assembles the node table; it does not yet decide who trains on what.
+- **Decision:** `assemble_node_table()` joins all 203,769 rows and maps `label` to `1` (illicit), `0` (licit), or `NaN` (unknown) — no rows are dropped at this stage.
+- **Why:** Per D-002, unknown nodes must stay available for graph-structure use even though they're excluded from supervised train/eval. Dropping them here would make that impossible later and would also shrink the edge list's connectivity (edges touching an unknown node would look "broken"). Supervised layers (3, 5) are responsible for filtering on `label.notna()` when they build `X`/`y`.
+- **Alternatives Considered:** Drop unknown rows immediately in Layer 1 — rejected; matches a mistake flagged in the owner's preprocessing notebook, where dropping unknowns early was found to remove ~85% of edges.
+- **Tradeoffs / risks:** Every consumer of the assembled node table must remember to filter `label.notna()` for supervised work. Mitigation: documented here and will be enforced by `make_temporal_split()` in Layer 2.
+- **Supersedes:** —

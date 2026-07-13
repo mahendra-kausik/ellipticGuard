@@ -1,0 +1,34 @@
+schema: '2.0'
+stages:
+  assemble:
+    cmd: python pipelines/assemble.py
+    deps:
+    - path: data/raw/elliptic_txs_classes.csv
+      hash: md5
+      md5: 7ad28a0fd7d0075684708bfba9e78e72
+      size: 3305144
+    - path: data/raw/elliptic_txs_edgelist.csv
+      hash: md5
+      md5: ae69bde1407c9320c0124a557693a479
+      size: 4470584
+    - path: data/raw/elliptic_txs_features.csv
+      hash: md5
+      md5: 9fb9dc51d9d1329f540cb6f83730f4a1
+      size: 689683771
+    - path: pipelines/assemble.py
+      hash: md5
+      md5: 3318f71a19b7c9dc0760dae89ef3f80b
+      size: 1282
+    - path: src/data/loaders.py
+      hash: md5
+      md5: c349e22704005d3e82ecff3f27dc7da5
+      size: 2803
+    outs:
+    - path: data/processed/edges.parquet
+      hash: md5
+      md5: d81ef40306a4ed20f14de13a76ef21cf
+      size: 2450319
+    - path: data/processed/nodes.parquet
+      hash: md5
+      md5: c2d7c37420581c19810004fc7217b6f9
+      size: 94558368
