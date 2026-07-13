@@ -1,0 +1,13 @@
+.env
+/data/
+mlruns/
+__pycache__/
+*.pyc
+.dvc/cache
+.dvc/config.local
+dist/
+*.egg-info/
+.DS_Store
+*.ipynb_checkpoints/
+.venv/
+venv/
