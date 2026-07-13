@@ -11,3 +11,18 @@ stages:
     outs:
       - data/processed/nodes.parquet
       - data/processed/edges.parquet
+  split_eda:
+    cmd: python pipelines/split_eda.py
+    deps:
+      - data/processed/nodes.parquet
+      - data/processed/edges.parquet
+      - src/data/split.py
+      - src/data/eda.py
+      - pipelines/split_eda.py
+    params:
+      - split.train_end
+      - split.val_start
+      - split.test_start
+      - split.test_end
+    outs:
+      - data/processed/eda_per_time_step.csv

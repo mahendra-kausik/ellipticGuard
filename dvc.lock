@@ -32,3 +32,37 @@ stages:
       hash: md5
       md5: c2d7c37420581c19810004fc7217b6f9
       size: 94558368
+  split_eda:
+    cmd: python pipelines/split_eda.py
+    deps:
+    - path: data/processed/edges.parquet
+      hash: md5
+      md5: d81ef40306a4ed20f14de13a76ef21cf
+      size: 2450319
+    - path: data/processed/nodes.parquet
+      hash: md5
+      md5: c2d7c37420581c19810004fc7217b6f9
+      size: 94558368
+    - path: pipelines/split_eda.py
+      hash: md5
+      md5: 3d5afe611fd5e47e73cc6502b0fd6900
+      size: 1682
+    - path: src/data/eda.py
+      hash: md5
+      md5: 8e5a704d11ca5bcc14893b436acc64cc
+      size: 802
+    - path: src/data/split.py
+      hash: md5
+      md5: 324425c89fc095ac32499e8fca6ce754
+      size: 2207
+    params:
+      params.yaml:
+        split.test_end: 49
+        split.test_start: 35
+        split.train_end: 34
+        split.val_start: 30
+    outs:
+    - path: data/processed/eda_per_time_step.csv
+      hash: md5
+      md5: df437a99f12cc1fdc55823342fd4e799
+      size: 2098

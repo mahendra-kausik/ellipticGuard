@@ -185,3 +185,12 @@ Entries D-001–D-012 are pre-seeded from planning. Claude Code appends D-013+ d
 - **Alternatives Considered:** Push now using the shared client anyway — not possible, Google itself refuses the flow, not a code fix.
 - **Tradeoffs / risks:** Data/model artifacts exist only locally + in git-tracked `dvc.lock` hashes until the owner sets up their own OAuth client. Acceptable for now; revisit before any layer that needs the remote populated (clean-clone reproduction, deployment).
 - **Supersedes:** —
+
+## D-019 — `TemporalSplit.train` means the fit-only slice (steps 1–29), not the full 1–34 training range
+- **Date / Layer:** Layer 2
+- **Context:** `PROJECT_PLAN.md` describes "train (1–34)" with "val (30–34) held out from train fitting" — a validation slice carved from the tail of the training range. Naming this in code is ambiguous: does "train" mean the full 1–34 range or the 1–29 slice actually used to fit transforms/models?
+- **Decision:** `make_temporal_split()` returns a `TemporalSplit(train, val, test)` where `train` = steps 1–29 only (what scalers/models are actually fit on), `val` = steps 30–34 (held out from fitting, used for tuning/thresholds), `test` = steps 35–49. There is no separate "full training range" object — if a later layer needs the 1–34 union (e.g. a final refit before deployment), it should concatenate `train` + `val` explicitly at that call site, not rely on a hidden combined default.
+- **Why:** An explicit, unambiguous `train` that always means "what got fit on" prevents an easy leakage bug: if `train` silently meant 1–34, a careless `scaler.fit(split.train)` call downstream would fit on the validation range too. Split boundaries (`train_end`, `val_start`, `test_start`, `test_end`) are also externalized to `params.yaml` so the exact partition used in any run is visible and versioned by DVC, not buried in code.
+- **Alternatives Considered:** A `TemporalSplit` with `train` = full 1–34 and a separate `fit`/`tune` distinction — rejected as more moving parts for no real benefit; the plan's own gate language ("test steps > train steps") is satisfied either way, but the fit-only naming is safer by default.
+- **Tradeoffs / risks:** Anyone reading `split.train` must remember it excludes the val tail — documented in the `split.py` module docstring and this entry. Edge partitioning (`split_edges`) assigns each edge to a partition via its `txId1` endpoint's time step, relying on the Layer 2 test's proof that edges never cross time steps.
+- **Supersedes:** —

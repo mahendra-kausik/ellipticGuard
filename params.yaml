@@ -1,1 +1,10 @@
 # params.yaml — pipeline parameters added incrementally, one per layer.
+
+split:
+  # Temporal split (Layer 2). train = steps < val_start; val = [val_start, train_end]
+  # (carved from the tail of the training range); test = [test_start, test_end].
+  # See PROJECT_PLAN.md Layer 2 / DECISIONS.md D-001 — never change to a random split.
+  train_end: 34
+  val_start: 30
+  test_start: 35
+  test_end: 49
