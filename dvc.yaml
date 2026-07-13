@@ -44,3 +44,12 @@ stages:
       - baseline.rf_max_depth
     outs:
       - data/processed/baseline_metrics.json
+  build_graph_features:
+    cmd: python pipelines/build_graph_features.py
+    deps:
+      - data/processed/nodes.parquet
+      - data/processed/edges.parquet
+      - src/features/graph.py
+      - pipelines/build_graph_features.py
+    outs:
+      - data/processed/graph_features.parquet

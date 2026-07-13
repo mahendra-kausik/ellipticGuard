@@ -100,3 +100,27 @@ stages:
       hash: md5
       md5: bb28bdd5a2b76b2fe95166aab6601dc9
       size: 606
+  build_graph_features:
+    cmd: python pipelines/build_graph_features.py
+    deps:
+    - path: data/processed/edges.parquet
+      hash: md5
+      md5: 9387bafbbbcead617f25961c57f8594a
+      size: 2450319
+    - path: data/processed/nodes.parquet
+      hash: md5
+      md5: a0d9f4cb9d9a61ef75e2f53af36ce3f2
+      size: 94558368
+    - path: pipelines/build_graph_features.py
+      hash: md5
+      md5: 1bb91f3e1d69616a27a42d26a8346f57
+      size: 1123
+    - path: src/features/graph.py
+      hash: md5
+      md5: 8bf449c804245e21173e026692a3acc4
+      size: 2582
+    outs:
+    - path: data/processed/graph_features.parquet
+      hash: md5
+      md5: 4f6e7a4e596e74262b4daebe2ce27c78
+      size: 2667008

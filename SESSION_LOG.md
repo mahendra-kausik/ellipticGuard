@@ -5,14 +5,14 @@ Single source of truth for "where are we?" Update at the end of every session an
 ---
 
 ## Current state
-- **Active layer:** Layer 3 — Baseline models (COMPLETE, gate met)
-- **Last gate passed:** Layer 3 — Baseline models
-- **Next action:** Read `PROJECT_PLAN.md` §6 Layer 4. Build per-time-step graphs (networkx) and causal topology features (degree, PageRank, clustering coefficient, component size, 1-hop label-free aggregates); assemble an engineered feature table; DVC-track it.
+- **Active layer:** Layer 4 — Graph construction & topology features (COMPLETE, gate met)
+- **Last gate passed:** Layer 4 — Graph construction & topology features
+- **Next action:** Read `PROJECT_PLAN.md` §6 Layer 5. Train XGBoost on provided + graph features, handle imbalance, tune on `val` only, compare feature sets as MLflow experiments, register champion as v2.
 - **Blockers / open questions:**
   - None currently open.
 
 ### Owner action items — things Claude Code cannot do
-_(none right now — nothing blocking Layer 4)_
+_(none right now — nothing blocking Layer 5)_
 
 ---
 
@@ -23,7 +23,7 @@ _(none right now — nothing blocking Layer 4)_
 | 1 | Data ingestion & integrity | complete | yes | loaders in `src/data/loaders.py`; DVC `assemble` stage; exact counts verified |
 | 2 | Temporal split harness & EDA | complete | yes | CRITICAL — leakage-safety gate; `make_temporal_split()` + per-time-step EDA |
 | 3 | Baseline models | complete | yes | LR + RF on 166 features; RF illicit-F1=0.752 on test; registered `elliptic-illicit` v1 |
-| 4 | Graph features | not started | — | per-time-step, causal |
+| 4 | Graph features | complete | yes | 7 causal topology features in `src/features/graph.py`; DVC `build_graph_features` stage |
 | 5 | Advanced model (XGBoost) | not started | — | register champion v2 |
 | 6 | Evaluation, calibration, drift story | not started | — | T43 curve |
 | 7 | Serving API (FastAPI) | not started | — | loads Production model |
@@ -46,6 +46,14 @@ _(none right now — nothing blocking Layer 4)_
 
 ## Changelog
 <!-- Newest on top. One block per session/gate. -->
+
+### 2026-07-14 — Layer 4
+- **Layer worked on:** Layer 4 — Graph construction & topology features
+- **What changed:** `src/features/graph.py` — `build_step_graph()` (directed graph for one time step: all its nodes incl. isolated ones + its edges), `compute_step_features()` (per-node topology on a single step's graph: `in_degree`, `out_degree`, `unique_neighbors`, `pagerank`, `clustering_coef`, `component_size`, `avg_neighbor_degree` — see D-021 for why this set), `compute_graph_features()` (loops over `time_step` groups, builds each step's subgraph from only that step's nodes/edges, concatenates results — causal by construction). `pipelines/build_graph_features.py` — DVC stage entrypoint: loads `nodes.parquet`/`edges.parquet`, computes features, writes `data/processed/graph_features.parquet`, prints non-null coverage + distributions. `dvc.yaml` — added the `build_graph_features` stage. `tests/test_graph_features.py` — two tests: a hand-computed 4-node/3-edge synthetic graph (verifies exact in/out-degree, clustering coefficient, and component size against manually worked values, per the plan's gate requirement) and a causality test proving a node's features are unchanged when unrelated edges are added to a different time step.
+- **Gate evidence:** `pytest -q` → `9 passed` (7 prior + 2 new). `dvc repro build_graph_features` → ran clean: `n_rows=203769` (matches total node count exactly), 100% non-null coverage on all 7 features. Feature distributions printed and sane (e.g. `in_degree` mean 1.15/max 284, `pagerank` mean 0.00024, `clustering_coef` mean 0.0138 — mostly-tree-like graph with occasional dense pockets, as expected for a payment network). Notably: zero nodes have `in_degree==0 and out_degree==0` — every node in the raw dataset has at least one edge, so there are no truly isolated nodes to special-case (verified directly on the output, not assumed).
+- **Decisions logged:** D-021 (topology feature set chosen to be causal, label-free, and orthogonal to the 72 provided aggregated features — degree/PageRank/clustering/component-size/avg-neighbor-degree capture graph *position*, not transaction attributes).
+- **Gate met?:** yes — approval requested from owner.
+- **Next action:** Begin Layer 5 — XGBoost on provided + graph features, class-imbalance handling, tuning on `val` only, provided-vs-+graph experiment comparison in MLflow, register champion as `elliptic-illicit` v2.
 
 ### 2026-07-14 — Layer 3
 - **Layer worked on:** Layer 3 — Baseline models
