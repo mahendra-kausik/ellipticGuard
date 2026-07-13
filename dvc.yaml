@@ -26,3 +26,21 @@ stages:
       - split.test_end
     outs:
       - data/processed/eda_per_time_step.csv
+  train_baseline:
+    cmd: python pipelines/train_baseline.py
+    deps:
+      - data/processed/nodes.parquet
+      - src/data/split.py
+      - src/models/baseline.py
+      - pipelines/train_baseline.py
+    params:
+      - split.train_end
+      - split.val_start
+      - split.test_start
+      - split.test_end
+      - baseline.random_state
+      - baseline.lr_max_iter
+      - baseline.rf_n_estimators
+      - baseline.rf_max_depth
+    outs:
+      - data/processed/baseline_metrics.json

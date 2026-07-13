@@ -26,11 +26,11 @@ stages:
     outs:
     - path: data/processed/edges.parquet
       hash: md5
-      md5: d81ef40306a4ed20f14de13a76ef21cf
+      md5: 9387bafbbbcead617f25961c57f8594a
       size: 2450319
     - path: data/processed/nodes.parquet
       hash: md5
-      md5: c2d7c37420581c19810004fc7217b6f9
+      md5: a0d9f4cb9d9a61ef75e2f53af36ce3f2
       size: 94558368
   split_eda:
     cmd: python pipelines/split_eda.py
@@ -66,3 +66,37 @@ stages:
       hash: md5
       md5: df437a99f12cc1fdc55823342fd4e799
       size: 2098
+  train_baseline:
+    cmd: python pipelines/train_baseline.py
+    deps:
+    - path: data/processed/nodes.parquet
+      hash: md5
+      md5: a0d9f4cb9d9a61ef75e2f53af36ce3f2
+      size: 94558368
+    - path: pipelines/train_baseline.py
+      hash: md5
+      md5: dfb169b271c138ea33f6097775a9b3b5
+      size: 3890
+    - path: src/data/split.py
+      hash: md5
+      md5: 324425c89fc095ac32499e8fca6ce754
+      size: 2207
+    - path: src/models/baseline.py
+      hash: md5
+      md5: 4847821e671dbbabba517dbea2121caf
+      size: 3055
+    params:
+      params.yaml:
+        baseline.lr_max_iter: 1000
+        baseline.random_state: 42
+        baseline.rf_max_depth:
+        baseline.rf_n_estimators: 100
+        split.test_end: 49
+        split.test_start: 35
+        split.train_end: 34
+        split.val_start: 30
+    outs:
+    - path: data/processed/baseline_metrics.json
+      hash: md5
+      md5: bb28bdd5a2b76b2fe95166aab6601dc9
+      size: 606

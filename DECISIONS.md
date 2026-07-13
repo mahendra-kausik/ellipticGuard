@@ -186,6 +186,15 @@ Entries D-001–D-012 are pre-seeded from planning. Claude Code appends D-013+ d
 - **Tradeoffs / risks:** Data/model artifacts exist only locally + in git-tracked `dvc.lock` hashes until the owner sets up their own OAuth client. Acceptable for now; revisit before any layer that needs the remote populated (clean-clone reproduction, deployment).
 - **Supersedes:** —
 
+## D-020 — MLflow local tracking backend is sqlite (`sqlite:///mlflow.db`), not the plain file store
+- **Date / Layer:** Layer 3
+- **Context:** `PROJECT_PLAN.md` §4 and D-010 say "MLflow (local backend...)" and `.env.example` originally documented an empty `MLFLOW_TRACKING_URI` as defaulting to a local `./mlruns` directory. Running the Layer 3 pipeline against the installed `mlflow==3.14.0` threw `MlflowException: The filesystem tracking backend (e.g., './mlruns') is in maintenance mode` — MLflow 3.x refuses to use the plain file store unless `MLFLOW_ALLOW_FILE_STORE` is explicitly set, because file-store model-registry support is being phased out upstream.
+- **Decision:** `pipelines/train_baseline.py` now defaults `MLFLOW_TRACKING_URI` (when unset) to `sqlite:///mlflow.db` instead of `file:./mlruns`. Still 100% local, free, no server required — just a different local storage format. `.gitignore` updated to exclude `mlflow.db`; `.env.example`'s comment corrected to describe the sqlite default.
+- **Why:** Sqlite is the backend MLflow itself now steers local users toward (it's what the error message recommends), and it's the only local option that supports the model registry cleanly on this MLflow version. Opting out via `MLFLOW_ALLOW_FILE_STORE` would keep an increasingly unsupported path alive for no benefit.
+- **Alternatives Considered:** Set `MLFLOW_ALLOW_FILE_STORE=true` and keep `./mlruns` — rejected, it's explicitly flagged upstream as maintenance-mode/deprecated, so it would just defer the same migration to a later, less convenient layer. Pin `mlflow<3` — rejected, adds a stale dependency pin for a non-problem.
+- **Tradeoffs / risks:** `mlflow.db` is a single local sqlite file rather than a browsable directory tree; still fully inspectable via `mlflow ui --backend-store-uri sqlite:///mlflow.db` or the MLflow client API. No change to the free-tier/no-paid-service constraint.
+- **Supersedes:** —
+
 ## D-019 — `TemporalSplit.train` means the fit-only slice (steps 1–29), not the full 1–34 training range
 - **Date / Layer:** Layer 2
 - **Context:** `PROJECT_PLAN.md` describes "train (1–34)" with "val (30–34) held out from train fitting" — a validation slice carved from the tail of the training range. Naming this in code is ambiguous: does "train" mean the full 1–34 range or the 1–29 slice actually used to fit transforms/models?

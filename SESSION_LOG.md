@@ -5,14 +5,14 @@ Single source of truth for "where are we?" Update at the end of every session an
 ---
 
 ## Current state
-- **Active layer:** Layer 2 — Temporal split harness & EDA (COMPLETE, gate met)
-- **Last gate passed:** Layer 2 — Temporal split harness & EDA
-- **Next action:** Read `PROJECT_PLAN.md` §6 Layer 3. Build Logistic Regression + Random Forest baselines on the provided 166 features using `make_temporal_split()`; fit scaler/imputer on `split.train` only; log runs to MLflow; register RF as `elliptic-illicit` v1.
+- **Active layer:** Layer 3 — Baseline models (COMPLETE, gate met)
+- **Last gate passed:** Layer 3 — Baseline models
+- **Next action:** Read `PROJECT_PLAN.md` §6 Layer 4. Build per-time-step graphs (networkx) and causal topology features (degree, PageRank, clustering coefficient, component size, 1-hop label-free aggregates); assemble an engineered feature table; DVC-track it.
 - **Blockers / open questions:**
-  - None currently open. (Resolved: the preprocessing notebook's differing split was confirmed as stale reference material from a different prior project, not an EllipticGuard bug — see memory note. `PROJECT_PLAN.md`'s partition was implemented directly in `src/data/split.py`; the notebook itself was left untouched since editing it wasn't required to meet the Layer 2 gate.)
+  - None currently open.
 
 ### Owner action items — things Claude Code cannot do
-_(none right now — nothing blocking Layer 3)_
+_(none right now — nothing blocking Layer 4)_
 
 ---
 
@@ -22,7 +22,7 @@ _(none right now — nothing blocking Layer 3)_
 | 0 | Scaffolding & environment | complete | yes | venv (.venv), git init + remote, DVC init + local gdrive remote, mlflow dir, pytest smoke green |
 | 1 | Data ingestion & integrity | complete | yes | loaders in `src/data/loaders.py`; DVC `assemble` stage; exact counts verified |
 | 2 | Temporal split harness & EDA | complete | yes | CRITICAL — leakage-safety gate; `make_temporal_split()` + per-time-step EDA |
-| 3 | Baseline models | not started | — | register RF as v1 |
+| 3 | Baseline models | complete | yes | LR + RF on 166 features; RF illicit-F1=0.752 on test; registered `elliptic-illicit` v1 |
 | 4 | Graph features | not started | — | per-time-step, causal |
 | 5 | Advanced model (XGBoost) | not started | — | register champion v2 |
 | 6 | Evaluation, calibration, drift story | not started | — | T43 curve |
@@ -46,6 +46,14 @@ _(none right now — nothing blocking Layer 3)_
 
 ## Changelog
 <!-- Newest on top. One block per session/gate. -->
+
+### 2026-07-14 — Layer 3
+- **Layer worked on:** Layer 3 — Baseline models
+- **What changed:** `src/models/baseline.py` — `MODEL_FEATURE_COLS` (the provided 166 features: `time_step` + `feat_0..feat_164`), `build_xy()` (filters to labeled rows per D-002), `fit_preprocessor()` (median imputer + standard scaler, fit on `split.train` only), `train_logistic_regression()`/`train_random_forest()` (both `class_weight="balanced"` per D-008), `evaluate()` (illicit-class precision/recall/F1 + AUC-PR + confusion matrix — no accuracy, per D-003). `pipelines/train_baseline.py` — DVC stage entrypoint: builds the temporal split, fits the preprocessor on train only, trains both models, logs params/metrics/models to MLflow, registers the RF run as `elliptic-illicit` v1, writes `data/processed/baseline_metrics.json`. `params.yaml` — added `baseline.{random_state,lr_max_iter,rf_n_estimators,rf_max_depth}`. `dvc.yaml` — added the `train_baseline` stage. `tests/test_baseline.py` — three tests: labeled-only filtering, preprocessor-fit-only-on-train (leakage-safety — proves a distribution-shifted partition doesn't move the fitted scaler), and a basic train/predict shape check.
+- **Gate evidence:** `pytest -q` → `7 passed` (4 prior + 3 new). `dvc repro train_baseline` → ran clean. Labeled train: n=26,381 (10.9% illicit); labeled test: n=16,670 (6.5% illicit). **LR test:** illicit-F1=0.245, AUC-PR=0.204, precision=0.140, recall=0.947. **RF test:** illicit-F1=0.752, AUC-PR=0.770, precision=0.849, recall=0.675 — comfortably above the ≥0.6 sanity bound and close to Weber et al.'s reference RF-AF figure (≈0.788), reported honestly as our own measured value, not adjusted to match. MLflow (`sqlite:///mlflow.db`, experiment `elliptic-aml`) shows both runs with logged params/metrics/models; `elliptic-illicit` v1 registered from the RF run (verified via `MlflowClient.search_model_versions`).
+- **Decisions logged:** D-020 (MLflow 3.x's file store is in maintenance mode; switched the local backend default to `sqlite:///mlflow.db`, corrected `.env.example` and `.gitignore` accordingly).
+- **Gate met?:** yes — approval requested from owner.
+- **Next action:** Begin Layer 4 — per-time-step graph construction + causal topology features (in/out-degree, unique neighbors, PageRank, clustering coefficient, component size, 1-hop label-free aggregates), assembled into a DVC-tracked engineered feature table.
 
 ### 2026-07-13 — Layer 2
 - **Layer worked on:** Layer 2 — Temporal split harness & EDA (CRITICAL leakage-safety gate)

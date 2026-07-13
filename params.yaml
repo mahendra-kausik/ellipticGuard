@@ -8,3 +8,11 @@ split:
   val_start: 30
   test_start: 35
   test_end: 49
+
+baseline:
+  # Layer 3 — LR + RF baselines. class_weight="balanced" handles imbalance (D-008 applies
+  # class-weight strategy from the start; SMOTE-style resampling is out per that decision).
+  random_state: 42
+  lr_max_iter: 1000
+  rf_n_estimators: 100
+  rf_max_depth: null

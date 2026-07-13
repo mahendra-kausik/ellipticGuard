@@ -1,6 +1,7 @@
 .env
 /data/
 mlruns/
+mlflow.db
 __pycache__/
 *.pyc
 .dvc/cache
