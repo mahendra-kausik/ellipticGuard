@@ -16,3 +16,12 @@ baseline:
   lr_max_iter: 1000
   rf_n_estimators: 100
   rf_max_depth: null
+
+advanced:
+  # Layer 5 — XGBoost champion. scale_pos_weight handles imbalance (see D-022).
+  # grid is a small manual search, scored on the val slice only (never test).
+  random_state: 42
+  grid:
+    max_depth: [4, 6, 8]
+    learning_rate: [0.05, 0.1]
+    n_estimators: [200, 400]

@@ -53,3 +53,21 @@ stages:
       - pipelines/build_graph_features.py
     outs:
       - data/processed/graph_features.parquet
+  train_advanced:
+    cmd: python pipelines/train_advanced.py
+    deps:
+      - data/processed/nodes.parquet
+      - data/processed/graph_features.parquet
+      - src/data/split.py
+      - src/models/baseline.py
+      - src/models/advanced.py
+      - pipelines/train_advanced.py
+    params:
+      - split.train_end
+      - split.val_start
+      - split.test_start
+      - split.test_end
+      - advanced.random_state
+      - advanced.grid
+    outs:
+      - data/processed/advanced_metrics.json

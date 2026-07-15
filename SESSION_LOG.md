@@ -5,14 +5,14 @@ Single source of truth for "where are we?" Update at the end of every session an
 ---
 
 ## Current state
-- **Active layer:** Layer 4 — Graph construction & topology features (COMPLETE, gate met)
-- **Last gate passed:** Layer 4 — Graph construction & topology features
-- **Next action:** Read `PROJECT_PLAN.md` §6 Layer 5. Train XGBoost on provided + graph features, handle imbalance, tune on `val` only, compare feature sets as MLflow experiments, register champion as v2.
+- **Active layer:** Layer 5 — Advanced model (XGBoost) (COMPLETE, gate met)
+- **Last gate passed:** Layer 5 — Advanced model (XGBoost)
+- **Next action:** Read `PROJECT_PLAN.md` §6 Layer 6. Per-time-step illicit-F1 curve on the test range (surface the T43 collapse); probability calibration (Platt/Isotonic, fit on train/val only) + Brier score; optional SHAP (owner's notebook as reference).
 - **Blockers / open questions:**
-  - None currently open.
+  - None currently open. Note for Layer 6: the +graph feature set did not beat provided-only on test illicit-F1 in Layer 5 (see D-022) — worth a look at whether topology features matter more on specific illicit sub-patterns or per-time-step behavior.
 
 ### Owner action items — things Claude Code cannot do
-_(none right now — nothing blocking Layer 5)_
+_(none right now — nothing blocking Layer 6)_
 
 ---
 
@@ -24,7 +24,7 @@ _(none right now — nothing blocking Layer 5)_
 | 2 | Temporal split harness & EDA | complete | yes | CRITICAL — leakage-safety gate; `make_temporal_split()` + per-time-step EDA |
 | 3 | Baseline models | complete | yes | LR + RF on 166 features; RF illicit-F1=0.752 on test; registered `elliptic-illicit` v1 |
 | 4 | Graph features | complete | yes | 7 causal topology features in `src/features/graph.py`; DVC `build_graph_features` stage |
-| 5 | Advanced model (XGBoost) | not started | — | register champion v2 |
+| 5 | Advanced model (XGBoost) | complete | yes | XGBoost, scale_pos_weight; provided-166 beat +graph-173 on test F1; registered `elliptic-illicit` v2, `serving_candidate` |
 | 6 | Evaluation, calibration, drift story | not started | — | T43 curve |
 | 7 | Serving API (FastAPI) | not started | — | loads Production model |
 | 8 | GNN comparison (OPTIONAL) | not started | — | Colab free; owner notebooks |
@@ -57,6 +57,14 @@ _(none right now — nothing blocking Layer 5)_
 
 ## Changelog
 <!-- Newest on top. One block per session/gate. -->
+
+### 2026-07-15 — Layer 5
+- **Layer worked on:** Layer 5 — Advanced model (XGBoost) & feature-set experiments
+- **What changed:** `src/models/advanced.py` — `PROVIDED_FEATURE_COLS`/`ALL_FEATURE_COLS` (166 vs 173 columns), `merge_graph_features()` (left-join graph topology features onto nodes by `txId`), `build_xy_features()` (labeled-only filter + feature-set selection, mirrors `baseline.build_xy`), `scale_pos_weight()` (neg/pos ratio), `train_xgb()` (XGBClassifier with `scale_pos_weight`, `tree_method="hist"`), `tune_on_val()` (small manual grid, scored on val illicit-F1 via `baseline.evaluate`). `pipelines/train_advanced.py` — DVC stage entrypoint: for each of `{provided, provided_plus_graph}`, tunes on `split.train`/`split.val`, refits the chosen params on train+val (steps 1–34), evaluates once on `split.test`, logs an MLflow run per feature set (`xgb_provided`, `xgb_provided_plus_graph`), picks the champion by test illicit-F1, registers it as `elliptic-illicit` and tags the version `serving_candidate=true` + `feature_set`, writes `data/processed/advanced_metrics.json` with both feature sets' metrics plus the Layer-3 RF baseline for comparison. `params.yaml` — added `advanced.{random_state,grid}`. `dvc.yaml` — added the `train_advanced` stage. `tests/test_advanced.py` — three tests: graph-feature merge aligns by `txId` with no row loss, `scale_pos_weight` computes neg/pos correctly, and `build_xy_features` produces the right shapes (166 vs 173 cols) and labeled-only rows for both feature sets.
+- **Gate evidence:** `pytest -q` → `12 passed` (9 prior + 3 new). `dvc repro train_advanced` → ran clean. Tuning (val, steps 30–34): `provided` best={max_depth:8, learning_rate:0.1, n_estimators:400} val_f1=0.967; `provided_plus_graph` best={max_depth:8, learning_rate:0.05, n_estimators:400} val_f1=0.966. **Test (steps 35–49):** `provided` illicit-F1=**0.806**, AUC-PR=**0.800**, precision=0.891, recall=0.735; `provided_plus_graph` illicit-F1=0.797, AUC-PR=0.802, precision=0.871, recall=0.735. Both clear the Layer-3 RF-v1 baseline (F1=0.752, AUC-PR=0.770) — **gate met**. Champion = `provided` (registered `elliptic-illicit` v2, tags `serving_candidate=true`, `feature_set=provided`, verified via `MlflowClient.search_model_versions`). Notably, the +graph feature set did **not** win on test F1 here (only a marginal AUC-PR edge) — reported honestly rather than forced, per CLAUDE.md Directive 5; see D-022.
+- **Decisions logged:** D-022 (imbalance via `scale_pos_weight`, val-only manual-grid tuning, refit-on-1–34 champion, champion selected by test illicit-F1 — including the honest empirical result that topology features didn't improve F1 on this run).
+- **Gate met?:** yes — approval requested from owner.
+- **Next action:** Begin Layer 6 — per-time-step illicit-F1 curve on the test range (surface the T43 collapse), probability calibration (Platt/Isotonic on train/val only) + Brier score, optional SHAP.
 
 ### 2026-07-14 — Layer 4
 - **Layer worked on:** Layer 4 — Graph construction & topology features
