@@ -11,10 +11,10 @@ Single source of truth for "where are we?" Update at the end of every session an
 - **Blockers / open questions:**
   - Layer 11 (HF Spaces deployment) must resolve a Docker artifact-path portability issue found while building `api/Dockerfile`: the local sqlite MLflow store bakes absolute Windows paths into the registry, so a Linux container can't currently resolve `models:/elliptic-illicit@production`. See D-024 for the full analysis and options. Not a Layer 7 gate blocker (gate only requires `TestClient`-level verification, which passes).
   - Layer 8 (GNN comparison) remains un-started/skipped per owner's explicit choice to prioritize must-have layers first — record formally if/when the owner decides to skip it permanently or pick it up later.
-  - none — the CI failure on the first push (bare `pytest` couldn't import `src`/`pipelines`; see D-027) is fixed and re-verified via a clean-checkout + fresh-venv reproduction; awaiting the next push to confirm green on GitHub itself.
+  - none — the CI failure on the first push (bare `pytest` couldn't import `src`/`pipelines`; see D-027) is fixed; owner confirmed the second GitHub Actions run passed.
 
 ### Owner action items — things Claude Code cannot do
-- Check the Actions tab after this push to confirm `ci.yml` runs green (the first run failed on a `pytest`-invocation import bug, now fixed and re-verified locally — see D-027 — but the actual GitHub runner hasn't confirmed it yet).
+_(none right now — CI confirmed green by the owner on the second run, D-027 fix verified live)_
 
 ---
 
