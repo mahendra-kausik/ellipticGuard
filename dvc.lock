@@ -174,3 +174,55 @@ stages:
       hash: md5
       md5: 2dc6a21e73978c1a152ad16cdf54c35a
       size: 1585
+  evaluate_champion:
+    cmd: python pipelines/evaluate_champion.py
+    deps:
+    - path: data/processed/advanced_metrics.json
+      hash: md5
+      md5: 2dc6a21e73978c1a152ad16cdf54c35a
+      size: 1585
+    - path: data/processed/nodes.parquet
+      hash: md5
+      md5: a0d9f4cb9d9a61ef75e2f53af36ce3f2
+      size: 94558368
+    - path: pipelines/evaluate_champion.py
+      hash: md5
+      md5: b708973f5798e289bb344aad8cf4aa1e
+      size: 6715
+    - path: src/data/split.py
+      hash: md5
+      md5: 324425c89fc095ac32499e8fca6ce754
+      size: 2207
+    - path: src/models/advanced.py
+      hash: md5
+      md5: dc8add9d54592807dc05521856da69ea
+      size: 2794
+    - path: src/models/baseline.py
+      hash: md5
+      md5: 4847821e671dbbabba517dbea2121caf
+      size: 3055
+    - path: src/models/evaluate.py
+      hash: md5
+      md5: c08864f7c6217282724b146f1ca6f425
+      size: 3899
+    params:
+      params.yaml:
+        advanced.random_state: 42
+        evaluate.calibration_methods:
+        - sigmoid
+        - isotonic
+        evaluate.shap_sample: 2000
+        evaluate.shap_top_n: 15
+        split.test_end: 49
+        split.test_start: 35
+        split.train_end: 34
+        split.val_start: 30
+    outs:
+    - path: data/processed/evaluation.json
+      hash: md5
+      md5: 137681f9c5dffb1bf6bbe1daa7be0af0
+      size: 609
+    - path: data/processed/per_time_step_f1.csv
+      hash: md5
+      md5: 060a05e81079667729977fce1accbb69
+      size: 1227

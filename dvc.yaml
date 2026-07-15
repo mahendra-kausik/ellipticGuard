@@ -71,3 +71,25 @@ stages:
       - advanced.grid
     outs:
       - data/processed/advanced_metrics.json
+  evaluate_champion:
+    cmd: python pipelines/evaluate_champion.py
+    deps:
+      - data/processed/nodes.parquet
+      - data/processed/advanced_metrics.json
+      - src/data/split.py
+      - src/models/baseline.py
+      - src/models/advanced.py
+      - src/models/evaluate.py
+      - pipelines/evaluate_champion.py
+    params:
+      - split.train_end
+      - split.val_start
+      - split.test_start
+      - split.test_end
+      - advanced.random_state
+      - evaluate.calibration_methods
+      - evaluate.shap_sample
+      - evaluate.shap_top_n
+    outs:
+      - data/processed/per_time_step_f1.csv
+      - data/processed/evaluation.json

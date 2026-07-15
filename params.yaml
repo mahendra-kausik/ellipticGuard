@@ -25,3 +25,10 @@ advanced:
     max_depth: [4, 6, 8]
     learning_rate: [0.05, 0.1]
     n_estimators: [200, 400]
+
+evaluate:
+  # Layer 6 — calibration methods compared on test Brier (calibrator fit on val
+  # only, cv="prefit"); lean SHAP sample size/top-N. See D-023.
+  calibration_methods: [sigmoid, isotonic]
+  shap_sample: 2000
+  shap_top_n: 15

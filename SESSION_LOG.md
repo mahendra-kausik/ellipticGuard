@@ -5,14 +5,14 @@ Single source of truth for "where are we?" Update at the end of every session an
 ---
 
 ## Current state
-- **Active layer:** Layer 5 — Advanced model (XGBoost) (COMPLETE, gate met)
-- **Last gate passed:** Layer 5 — Advanced model (XGBoost)
-- **Next action:** Read `PROJECT_PLAN.md` §6 Layer 6. Per-time-step illicit-F1 curve on the test range (surface the T43 collapse); probability calibration (Platt/Isotonic, fit on train/val only) + Brier score; optional SHAP (owner's notebook as reference).
+- **Active layer:** Layer 6 — Evaluation, calibration, drift story (COMPLETE, gate met)
+- **Last gate passed:** Layer 6 — Honest evaluation, calibration & the drift story
+- **Next action:** Read `PROJECT_PLAN.md` §6 Layer 7. Build the FastAPI serving app: `/predict` loads the **Production** model from the MLflow registry (not a hardcoded path), `/health` endpoint, Dockerfile, local run. Decide there whether to serve v2 (raw) or promote a calibrated model — Layer 6 deliberately left that choice open (D-023).
 - **Blockers / open questions:**
-  - None currently open. Note for Layer 6: the +graph feature set did not beat provided-only on test illicit-F1 in Layer 5 (see D-022) — worth a look at whether topology features matter more on specific illicit sub-patterns or per-time-step behavior.
+  - None currently open. Layer 7 needs to decide what "Production" means for a locally-registered model (v2 raw vs. a newly-promoted calibrated version) — the calibrated model from Layer 6 was logged to MLflow (run `champion_evaluation`) but intentionally not registered.
 
 ### Owner action items — things Claude Code cannot do
-_(none right now — nothing blocking Layer 6)_
+_(none right now — nothing blocking Layer 7)_
 
 ---
 
@@ -25,7 +25,7 @@ _(none right now — nothing blocking Layer 6)_
 | 3 | Baseline models | complete | yes | LR + RF on 166 features; RF illicit-F1=0.752 on test; registered `elliptic-illicit` v1 |
 | 4 | Graph features | complete | yes | 7 causal topology features in `src/features/graph.py`; DVC `build_graph_features` stage |
 | 5 | Advanced model (XGBoost) | complete | yes | XGBoost, scale_pos_weight; provided-166 beat +graph-173 on test F1; registered `elliptic-illicit` v2, `serving_candidate` |
-| 6 | Evaluation, calibration, drift story | not started | — | T43 curve |
+| 6 | Evaluation, calibration, drift story | complete | yes | per-time-step F1 curve surfaces T43 collapse (0.855→0.028); calibration (sigmoid) + Brier; lean SHAP |
 | 7 | Serving API (FastAPI) | not started | — | loads Production model |
 | 8 | GNN comparison (OPTIONAL) | not started | — | Colab free; owner notebooks |
 | 9 | Monitoring & observability | not started | — | Evidently / NannyML |
@@ -57,6 +57,14 @@ _(none right now — nothing blocking Layer 6)_
 
 ## Changelog
 <!-- Newest on top. One block per session/gate. -->
+
+### 2026-07-15 — Layer 6
+- **Layer worked on:** Layer 6 — Honest evaluation, calibration & the drift story
+- **What changed:** `src/models/evaluate.py` — `build_train_only_champion()` (refits the champion's Layer-5 tuned params on train-only, steps 1–29, so val stays a clean calibration holdout — see D-023), `per_time_step_metrics()` (per-test-step illicit-F1/precision/recall/AUC-PR, reusing `baseline.evaluate`), `calibrate_on_val()` (`CalibratedClassifierCV` wrapping a `FrozenEstimator`-frozen base model, fit on val only — sklearn 1.9's supported replacement for the deprecated `cv="prefit"`), `brier()`, `top_shap_features()` (guarded `shap.TreeExplainer` global ranking — any failure warns and returns `None`, never fails the pipeline). `pipelines/evaluate_champion.py` — DVC stage entrypoint: loads champion params from `advanced_metrics.json`, builds the train-only base model, computes the per-step curve + T43 annotation, calibrates on val (sigmoid + isotonic, compares test Brier), runs guarded SHAP on a 2,000-row test sample, logs everything to a `champion_evaluation` MLflow run (tagged `purpose=layer6_evaluation_not_for_serving`) **without registering**, writes `data/processed/{per_time_step_f1.csv, evaluation.json, shap_top_features.csv}`. `params.yaml` — added `evaluate.{calibration_methods, shap_sample, shap_top_n}`. `dvc.yaml` — added the `evaluate_champion` stage. `requirements.txt` — added `shap`. `tests/test_evaluation.py` — two tests: per-time-step metrics return exactly one row per test step with valid F1/AUC-PR ranges; calibration wraps a `FrozenEstimator` (leakage guard — proves the base model is frozen, not refit, when the calibrator is fit) and produces valid probabilities + a finite Brier score.
+- **Gate evidence:** `pytest -q` → `14 passed` (12 prior + 2 new). `dvc repro evaluate_champion` → ran clean. **Per-time-step illicit-F1 (test range 35–49):** mean F1 = 0.855 for steps 35–42, collapsing to mean F1 = 0.028 from step 43 onward (individual steps 43/45/47 = 0.000 illicit-F1) — the T43 collapse is unambiguous and matches the Layer-2 EDA's illicit-rate drop. **Calibration (test Brier, lower better):** uncalibrated=0.0268, sigmoid=0.0264 (chosen), isotonic=0.0266. **SHAP:** top features led by `feat_52` (mean|SHAP|=1.63), `feat_58`, `feat_89` — written to `shap_top_features.csv`. Registry verified via `MlflowClient.search_model_versions` — still only v1/v2, **no v3 created** (calibrated model logged to the `champion_evaluation` run, not registered, per owner's explicit choice).
+- **Decisions logged:** D-023 (T43 = regime change requiring escalation, not recoverable retraining; evaluation model deliberately refit on train-only vs v2's train+val, to preserve val as an honest calibration holdout; calibrated model logged but not registered — Layer 7 decides serving format; `FrozenEstimator`/pickle-serialization notes for future sklearn/mlflow version drift).
+- **Gate met?:** yes — approval requested from owner.
+- **Next action:** Begin Layer 7 — FastAPI serving app (`/predict` loads the Production model from the MLflow registry, `/health`, Dockerfile, local run via `TestClient`). Decide what "Production" means given v2 (raw) vs the unregistered calibrated model from Layer 6.
 
 ### 2026-07-15 — Layer 5
 - **Layer worked on:** Layer 5 — Advanced model (XGBoost) & feature-set experiments
