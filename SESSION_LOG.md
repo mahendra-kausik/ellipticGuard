@@ -11,10 +11,10 @@ Single source of truth for "where are we?" Update at the end of every session an
 - **Blockers / open questions:**
   - Layer 11 (HF Spaces deployment) must resolve a Docker artifact-path portability issue found while building `api/Dockerfile`: the local sqlite MLflow store bakes absolute Windows paths into the registry, so a Linux container can't currently resolve `models:/elliptic-illicit@production`. See D-024 for the full analysis and options. Not a Layer 7 gate blocker (gate only requires `TestClient`-level verification, which passes).
   - Layer 8 (GNN comparison) remains un-started/skipped per owner's explicit choice to prioritize must-have layers first — record formally if/when the owner decides to skip it permanently or pick it up later.
-  - CI (`.github/workflows/ci.yml`) is written but has not yet run on GitHub — owner needs to confirm Actions is enabled on the repo and push to see it go green (see Owner action items).
+  - none — the CI failure on the first push (bare `pytest` couldn't import `src`/`pipelines`; see D-027) is fixed and re-verified via a clean-checkout + fresh-venv reproduction; awaiting the next push to confirm green on GitHub itself.
 
 ### Owner action items — things Claude Code cannot do
-- Confirm GitHub Actions is enabled for the repo (Settings → Actions), then check the Actions tab after the next push to confirm `ci.yml` runs green.
+- Check the Actions tab after this push to confirm `ci.yml` runs green (the first run failed on a `pytest`-invocation import bug, now fixed and re-verified locally — see D-027 — but the actual GitHub runner hasn't confirmed it yet).
 
 ---
 
