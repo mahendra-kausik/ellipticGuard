@@ -44,6 +44,17 @@ _(none right now — nothing blocking Layer 5)_
 
 ---
 
+## (template for "Changelog" below — copy for each session)
+- **Date / session:**
+- **Layer worked on:**
+- **What changed:** (files added/edited, key functions)
+- **Gate evidence:** (test output, metric, artifact path)
+- **Decisions logged:** (D-numbers added)
+- **Gate met?:** yes/no — if yes, approval requested from owner
+- **Next action:**
+
+---
+
 ## Changelog
 <!-- Newest on top. One block per session/gate. -->
 
@@ -86,12 +97,3 @@ _(none right now — nothing blocking Layer 5)_
 - **Decisions logged:** D-013 (DVC remote via `--local` config), D-014 (`.venv` name, Python 3.13.3 used without pin issues).
 - **Gate met?:** yes — approval requested from owner.
 - **Next action:** Begin Layer 1 — data ingestion & integrity (loaders with runtime header/shape checks, feature+class join, edgelist parsing, label remap, DVC-track raw + assembled data).
-
-### (template — copy for each session)
-- **Date / session:**
-- **Layer worked on:**
-- **What changed:** (files added/edited, key functions)
-- **Gate evidence:** (test output, metric, artifact path)
-- **Decisions logged:** (D-numbers added)
-- **Gate met?:** yes/no — if yes, approval requested from owner
-- **Next action:**

@@ -38,10 +38,6 @@ Three files:
 - Classes ⇒ **supervised labels** exist; no manual labeling needed. ✔
 - All three requirements for this project are satisfied by the dataset as shipped.
 
-**Two items Claude Code MUST confirm at load time (do not hardcode):**
-1. **Header presence** per file (inspect row 0 of each before parsing). Mirrors differ.
-2. **Feature count 165 vs 166** — the paper says 166 (time step included); some loaders expose 165 by peeling off the time step. Assert the actual `X.shape[1]` after loading and reconcile in a code comment + a `DECISIONS.md` note.
-
 ---
 
 ## 3. Benchmarks to target (reference — VERIFY against arXiv:1908.02591, Weber et al. 2019, Table 1)

@@ -1,3 +1,0 @@
-# EllipticGuard
-
-Work in progress.
