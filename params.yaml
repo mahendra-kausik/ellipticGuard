@@ -38,3 +38,14 @@ monitor:
   # report_step picks one late window to render as a full human-readable HTML report;
   # 43 is the T43 regime-change step already surfaced in Layer 6 (D-023).
   report_step: 43
+
+retrain:
+  # Layer 10 — replay driver + drift-or-performance flag + champion/challenger gate.
+  # Champion = the Layer 6 train-only model (steps 1-29). f1_floor: well under the
+  # ~0.85 pre-T43 per-step mean (Layer 6), so nominal steps don't trip it but a
+  # T43-style collapse (~0.03) clearly does. drift_ceiling: at the target-drift
+  # knee Layer 9 found (pre-T43 mean 0.052 vs post-T43 mean 0.117). promote_margin:
+  # the minimum illicit-F1 edge a challenger needs over the champion to promote.
+  f1_floor: 0.5
+  drift_ceiling: 0.1
+  promote_margin: 0.01

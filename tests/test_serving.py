@@ -10,6 +10,8 @@ from pipelines.promote_model import main as promote
 from src.models.baseline import MODEL_FEATURE_COLS
 from src.serving.app import app
 
+pytestmark = pytest.mark.needs_data
+
 REPO_ROOT_NODES = "data/processed/nodes.parquet"
 
 

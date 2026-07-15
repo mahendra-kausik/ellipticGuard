@@ -110,3 +110,29 @@ stages:
     outs:
       - data/processed/drift_by_time_step.csv
       - data/processed/drift_report.html
+  replay_retraining:
+    cmd: python pipelines/replay_retraining.py
+    deps:
+      - data/processed/nodes.parquet
+      - data/processed/advanced_metrics.json
+      - src/data/split.py
+      - src/models/baseline.py
+      - src/models/advanced.py
+      - src/models/evaluate.py
+      - src/monitoring/drift.py
+      - src/retraining/replay.py
+      - pipelines/replay_retraining.py
+    params:
+      - split.train_end
+      - split.val_start
+      - split.test_start
+      - split.test_end
+      - advanced.random_state
+      - retrain.f1_floor
+      - retrain.drift_ceiling
+      - retrain.promote_margin
+    outs:
+      - data/processed/replay_log.csv
+    metrics:
+      - metrics/quality_gate.json:
+          cache: false

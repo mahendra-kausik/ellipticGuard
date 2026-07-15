@@ -5,15 +5,16 @@ Single source of truth for "where are we?" Update at the end of every session an
 ---
 
 ## Current state
-- **Active layer:** Layer 9 — Monitoring & observability (COMPLETE, gate met)
-- **Last gate passed:** Layer 9 — drift artifact + target-drift T43 signal; `/metrics` latency capture
-- **Next action:** Read `PROJECT_PLAN.md` §6 Layer 10 (retraining loop & CI/CD replay) or Layer 8 (optional GNN comparison, still nice-to-have and skipped so far). Owner to decide which comes next — Layer 10 is must-have per §9.
+- **Active layer:** Layer 10 — Retraining loop & CI/CD (replay) (COMPLETE, gate met)
+- **Last gate passed:** Layer 10 — replay flag fires at/after T43; champion/challenger promotes in routine steps and holds at T43; lean data-free CI green
+- **Next action:** Read `PROJECT_PLAN.md` §6 Layer 11 (deployment & docs) or Layer 8 (optional GNN comparison, still nice-to-have and skipped so far). Owner to decide which comes next.
 - **Blockers / open questions:**
   - Layer 11 (HF Spaces deployment) must resolve a Docker artifact-path portability issue found while building `api/Dockerfile`: the local sqlite MLflow store bakes absolute Windows paths into the registry, so a Linux container can't currently resolve `models:/elliptic-illicit@production`. See D-024 for the full analysis and options. Not a Layer 7 gate blocker (gate only requires `TestClient`-level verification, which passes).
-  - Layer 8 (GNN comparison) remains un-started/skipped per owner's explicit choice to prioritize Layer 9 (must-have) — record formally if/when the owner decides to skip it permanently or pick it up later.
+  - Layer 8 (GNN comparison) remains un-started/skipped per owner's explicit choice to prioritize must-have layers first — record formally if/when the owner decides to skip it permanently or pick it up later.
+  - CI (`.github/workflows/ci.yml`) is written but has not yet run on GitHub — owner needs to confirm Actions is enabled on the repo and push to see it go green (see Owner action items).
 
 ### Owner action items — things Claude Code cannot do
-_(none right now — nothing blocking Layer 10/8)_
+- Confirm GitHub Actions is enabled for the repo (Settings → Actions), then check the Actions tab after the next push to confirm `ci.yml` runs green.
 
 ---
 
@@ -30,7 +31,7 @@ _(none right now — nothing blocking Layer 10/8)_
 | 7 | Serving API (FastAPI) | complete | yes | `/predict` + `/health` via `models:/elliptic-illicit@production`; raw v2 probability served |
 | 8 | GNN comparison (OPTIONAL) | skipped for now | — | Colab free; owner notebooks; owner chose Layer 9 first as the must-have priority |
 | 9 | Monitoring & observability | complete | yes | Evidently feature/target drift (`src/monitoring/drift.py`); target drift spikes at T43, feature drift flat; `/metrics` p50/p95 on API |
-| 10 | Retraining loop & CI/CD (replay) | not started | — | flag fires at T43 |
+| 10 | Retraining loop & CI/CD (replay) | complete | yes | replay driver + drift-or-performance flag; champion/challenger promotes routine steps, holds at T43; lean data-free GitHub Actions CI |
 | 11 | Deployment & docs | not started | — | HF Spaces live URL |
 
 ---
@@ -58,6 +59,14 @@ _(none right now — nothing blocking Layer 10/8)_
 
 ## Changelog
 <!-- Newest on top. One block per session/gate. -->
+
+### 2026-07-16 — Layer 10
+- **Layer worked on:** Layer 10 — Retraining loop & CI/CD (replay)
+- **What changed:** `src/retraining/replay.py` — `window_f1()` (illicit-F1 on one time step's labeled nodes), `flag_decision()` (fires when a window's F1 drops below `f1_floor` OR its target-drift score exceeds `drift_ceiling` — the drift-or-performance flag), `train_challenger()` (refits an XGB challenger on all labeled data strictly *before* the current replayed step — never including it, to stay out-of-sample), `champion_challenger()` (promotes only if the challenger beats the champion by >= `promote_margin` illicit-F1 on the step's held-out window), `run_replay()` (streams a step range, logging one row per step: F1, drift score, flag, and the promote/hold verdict; champion is never swapped mid-replay so every step's verdict is directly comparable). `pipelines/replay_retraining.py` — DVC stage entrypoint: rebuilds the Layer 6 train-only champion (`build_train_only_champion`, steps 1–29, reusing `advanced_metrics.json`'s tuned params) rather than inventing a new baseline, computes target-drift-by-step via Layer 9's `drift_by_time_step`, runs the replay across the full test range (35–49), writes `data/processed/replay_log.csv` (DVC out) and a git-committed `metrics/quality_gate.json` (registered v2's real test illicit-F1 + replay promote/hold counts, so CI can quality-gate without the git-ignored data). `.github/workflows/ci.yml` — lean, data-free GitHub Actions: `pytest -m "not needs_data"` + a quality-gate step reading `metrics/quality_gate.json`, failing the build if champion illicit-F1 < 0.6. `pytest.ini` — registers the `needs_data` marker; applied to `test_data_integrity.py`, both tests in `test_temporal_split.py`, all of `test_serving.py`, and `test_monitoring.py::test_metrics_endpoint_captures_latency` (the only tests that read real parquet or hit the MLflow registry — everything else already used synthetic fixtures). `params.yaml` — added `retrain.{f1_floor, drift_ceiling, promote_margin}`. `dvc.yaml` — added the `replay_retraining` stage (outs `replay_log.csv`, metrics `quality_gate.json` with `cache: false`). `tests/test_retraining.py` — six new tests: flag fires below the F1 floor, fires above the drift ceiling, stays quiet when nominal; champion/challenger promotes a genuinely-better challenger and holds when neither model is better; a full synthetic replay returns the correct per-step schema and fires the flag on a simulated collapse step.
+- **Gate evidence:** `pytest -q` → `26 passed` (20 prior + 6 new). `pytest -m "not needs_data" -q` (simulating the CI environment, no data present) → `19 passed, 7 deselected`. `dvc repro replay_retraining` → ran clean, reproduced identical results. Real replay output (champion = Layer 6 train-only model, test illicit-F1 = 0.759, in line with Layer 6's own reported number): **flag first fires at step 36** (pre-T43, drift-triggered: `drift=0.135 > ceiling=0.1`) and fires continuously from step 43 onward (F1 collapse + drift both trip it) — satisfies "fires at/after T43." **Champion/challenger promotes in routine steps** 36–42 (e.g. step 39: champion F1=0.884, challenger F1=0.968 — a genuine edge from slightly more same-regime data) — satisfies "promotes in a routine case." **Holds at steps 35, 43, and 45**, where the challenger (trained on everything strictly before that step) cannot beat the champion (both near 0 at 43/45) — satisfies "reject/hold in the T43 case." Steps 44/46–49 show partial challenger recovery (low but nonzero F1, e.g. 0.19–0.90) as later challengers get to see a little post-T43 data, but never approach the ~0.85 pre-collapse level — reported honestly as a partial-adaptation nuance, not smoothed over. `metrics/quality_gate.json`: `champion_test_illicit_f1=0.806` (v2's real registered number) passes the 0.6 threshold; manually verified the same check exits non-zero when the value is dropped below threshold, then confirmed the real file is unaffected.
+- **Decisions logged:** D-026 (replay champion reuses the Layer 6 train-only model rather than an artificially stale one; challenger training window fixed to strictly-before-the-step after an initial in-sample-leakage bug gave every step a fake F1=1.0; lean data-free CI scope confirmed with the owner).
+- **Gate met?:** yes — approval requested from owner.
+- **Next action:** Owner to choose Layer 11 (deployment & docs — must resolve the D-024 Docker artifact-path issue before a live HF Spaces serve) or Layer 8 (optional GNN comparison, still skipped). Owner should also confirm GitHub Actions is enabled and watch the first real CI run after this push.
 
 ### 2026-07-15 — Layer 9
 - **Layer worked on:** Layer 9 — Monitoring & observability

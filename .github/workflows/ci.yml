@@ -1,0 +1,38 @@
+name: CI
+
+# Lean, data-free CI (D-026): data/, mlruns/, and mlflow.db are git-ignored and
+# DVC-pulling them needs the Google Drive OAuth secret (the same auth that has
+# been flaky locally — see SESSION_LOG.md). So this workflow runs the
+# leakage/logic/unit test suite (tests not marked `needs_data`) plus a quality
+# gate against the committed metrics/quality_gate.json snapshot. It does NOT
+# run `dvc repro` or the data-dependent tests — those are demonstrated locally
+# and their evidence is recorded in SESSION_LOG.md.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Run data-free test suite
+        run: pytest -m "not needs_data" -q
+      - name: Quality gate — champion illicit-F1 regression check
+        run: |
+          python -c "
+          import json, sys
+          gate = json.load(open('metrics/quality_gate.json'))
+          f1 = gate['champion_test_illicit_f1']
+          threshold = 0.6
+          print(f'champion_test_illicit_f1={f1:.3f} (threshold={threshold})')
+          sys.exit(0 if f1 >= threshold else 1)
+          "

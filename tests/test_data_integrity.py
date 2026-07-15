@@ -1,10 +1,13 @@
 from pathlib import Path
 
+import pytest
+
 from src.data.loaders import assemble_node_table, check_integrity, load_classes, load_edgelist, load_features
 
 RAW_DIR = Path(__file__).resolve().parents[1] / "data" / "raw"
 
 
+@pytest.mark.needs_data
 def test_layer1_integrity():
     features_df = load_features(RAW_DIR / "elliptic_txs_features.csv")
     classes_df = load_classes(RAW_DIR / "elliptic_txs_classes.csv")

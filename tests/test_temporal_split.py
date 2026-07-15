@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pandas as pd
+import pytest
 
 from src.data.split import make_temporal_split, split_edges
 
@@ -13,6 +14,7 @@ def _load():
     return nodes_df, edges_df
 
 
+@pytest.mark.needs_data
 def test_no_cross_time_step_edges():
     """(c) Edges never cross time steps — the premise that makes per-step graph
     features causal by construction (PROJECT_PLAN.md §2)."""
@@ -23,6 +25,7 @@ def test_no_cross_time_step_edges():
     assert (step1 == step2).all(), "found edges spanning more than one time step"
 
 
+@pytest.mark.needs_data
 def test_temporal_split_partitions_disjoint_and_ordered():
     """(a) no txId in more than one partition; (b) test steps > train/val steps,
     and val is carved from the tail of the training range, never the future."""

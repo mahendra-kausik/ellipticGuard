@@ -53,6 +53,7 @@ def test_percentile_known_values():
     assert _percentile([], 50) == 0.0
 
 
+@pytest.mark.needs_data
 def test_metrics_endpoint_captures_latency():
     promote()  # idempotent — ensures @production alias exists before the app loads it
     client = TestClient(app)
