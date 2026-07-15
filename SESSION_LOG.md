@@ -5,14 +5,15 @@ Single source of truth for "where are we?" Update at the end of every session an
 ---
 
 ## Current state
-- **Active layer:** Layer 7 — Serving API (FastAPI) (COMPLETE, gate met)
-- **Last gate passed:** Layer 7 — FastAPI serving app loads Production model via MLflow alias
-- **Next action:** Read `PROJECT_PLAN.md` §6 Layer 8 (optional GNN comparison) or Layer 9 (monitoring). Owner to decide which comes next — Layer 8 is nice-to-have per §9, Layer 9 is must-have.
+- **Active layer:** Layer 9 — Monitoring & observability (COMPLETE, gate met)
+- **Last gate passed:** Layer 9 — drift artifact + target-drift T43 signal; `/metrics` latency capture
+- **Next action:** Read `PROJECT_PLAN.md` §6 Layer 10 (retraining loop & CI/CD replay) or Layer 8 (optional GNN comparison, still nice-to-have and skipped so far). Owner to decide which comes next — Layer 10 is must-have per §9.
 - **Blockers / open questions:**
   - Layer 11 (HF Spaces deployment) must resolve a Docker artifact-path portability issue found while building `api/Dockerfile`: the local sqlite MLflow store bakes absolute Windows paths into the registry, so a Linux container can't currently resolve `models:/elliptic-illicit@production`. See D-024 for the full analysis and options. Not a Layer 7 gate blocker (gate only requires `TestClient`-level verification, which passes).
+  - Layer 8 (GNN comparison) remains un-started/skipped per owner's explicit choice to prioritize Layer 9 (must-have) — record formally if/when the owner decides to skip it permanently or pick it up later.
 
 ### Owner action items — things Claude Code cannot do
-_(none right now — nothing blocking Layer 8/9)_
+_(none right now — nothing blocking Layer 10/8)_
 
 ---
 
@@ -27,8 +28,8 @@ _(none right now — nothing blocking Layer 8/9)_
 | 5 | Advanced model (XGBoost) | complete | yes | XGBoost, scale_pos_weight; provided-166 beat +graph-173 on test F1; registered `elliptic-illicit` v2, `serving_candidate` |
 | 6 | Evaluation, calibration, drift story | complete | yes | per-time-step F1 curve surfaces T43 collapse (0.855→0.028); calibration (sigmoid) + Brier; lean SHAP |
 | 7 | Serving API (FastAPI) | complete | yes | `/predict` + `/health` via `models:/elliptic-illicit@production`; raw v2 probability served |
-| 8 | GNN comparison (OPTIONAL) | not started | — | Colab free; owner notebooks |
-| 9 | Monitoring & observability | not started | — | Evidently / NannyML |
+| 8 | GNN comparison (OPTIONAL) | skipped for now | — | Colab free; owner notebooks; owner chose Layer 9 first as the must-have priority |
+| 9 | Monitoring & observability | complete | yes | Evidently feature/target drift (`src/monitoring/drift.py`); target drift spikes at T43, feature drift flat; `/metrics` p50/p95 on API |
 | 10 | Retraining loop & CI/CD (replay) | not started | — | flag fires at T43 |
 | 11 | Deployment & docs | not started | — | HF Spaces live URL |
 
@@ -57,6 +58,14 @@ _(none right now — nothing blocking Layer 8/9)_
 
 ## Changelog
 <!-- Newest on top. One block per session/gate. -->
+
+### 2026-07-15 — Layer 9
+- **Layer worked on:** Layer 9 — Monitoring & observability
+- **What changed:** `src/monitoring/drift.py` — `_feature_dataset()`/`_target_dataset()` (build Evidently `Dataset`s: feature drift over `FEATURE_COLS` — feat_0..feat_164, `time_step` deliberately excluded — using all nodes in a window; target drift over the `label` column using labeled nodes only, matching D-002), `_feature_drift_share()`/`_target_drift_score()` (two independent `Report([DataDriftPreset()])` calls against Evidently 0.7.x's `Report`/`Dataset`/`DataDefinition` API), `drift_by_time_step()` (reference = `split.train`, steps 1–29; one row per later time step with `share_drifted` and `target_drift_score`), `save_report_html()` (full human-readable feature-drift report for one representative late window). `pipelines/monitor_drift.py` — DVC stage entrypoint: builds the split, computes the per-step drift table, writes `data/processed/drift_by_time_step.csv`, saves `data/processed/drift_report.html` for step 43. `src/serving/app.py` — added an `@app.middleware("http")` that times every request into a `collections.deque(maxlen=1000)` and logs method/path/status/latency via stdlib `logging`; added `GET /metrics` (count/p50_ms/p95_ms via a stdlib nearest-rank `_percentile()` helper — no new dependency). `params.yaml` — added `monitor.report_step`. `dvc.yaml` — added the `monitor_drift` stage. `requirements.txt` — tightened the evidently pin to `>=0.7.0,<0.8.0` (the installed 0.7.21 uses the newer API; the pre-0.7 `ColumnMapping` API is gone). `tests/test_monitoring.py` — three tests: a synthetic feature shift produces strictly higher `share_drifted` than no shift (proves the metric responds to real drift), `_percentile()` matches hand-computed p50/p95 on a known list, and `/metrics` via `TestClient` returns `count>0` with `p50_ms <= p95_ms` after several requests.
+- **Gate evidence:** `pytest -q` → `20 passed` (17 prior + 3 new). `dvc repro monitor_drift` → ran clean, wrote both artifacts. **Feature drift** (`share_drifted`, Wasserstein distance normed/threshold 0.1, auto-selected by Evidently at this sample size — verified directly): fluctuates 0.45–0.76 across steps 30–49 with no real trend (corr(time_step, share_drifted) = 0.06; mean 0.583 pre-T43 vs 0.605 post-T43). **Target drift** (`target_drift_score`, the `label` column's own drift value): mean 0.052 for steps 30–42 vs **0.117** for steps 43–49 — the four highest values in the whole series are steps 43–46 (0.140, 0.145, 0.178, 0.183), lining up cleanly with Layer 2's EDA illicit-rate collapse and Layer 6's F1 collapse at T43. `/metrics` sample via `TestClient`: `{"count": 8, "p50_ms": 0.73, "p95_ms": 6.48}`. The gate's "drift increasing toward later steps" is met by the target-drift signal specifically, not a blended feature+target number — reported honestly as two separate curves rather than forced into one misleading aggregate (see D-025 for the full reasoning, including a first pass that mixed the two and initially looked flat).
+- **Decisions logged:** D-025 (feature/target drift computed and reported separately; `time_step` excluded from drift-tested columns as a construction artifact, not real signal; NannyML skipped as nice-to-have; `/metrics` uses an in-process deque, no Prometheus dependency added).
+- **Gate met?:** yes — approval requested from owner.
+- **Next action:** Owner to choose Layer 10 (retraining loop & CI/CD replay — must-have, the T43 flag-fires-and-escalates story) or return to Layer 8 (optional GNN comparison, still skipped).
 
 ### 2026-07-15 — Layer 7
 - **Layer worked on:** Layer 7 — Serving API (FastAPI)

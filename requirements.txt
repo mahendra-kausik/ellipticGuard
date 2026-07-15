@@ -28,7 +28,8 @@ dvc-gdrive>=3.0.0             # Google Drive remote backend for DVC
 mlflow>=2.12.0                # experiment tracking + model registry
 
 # ── Layer 9: monitoring ────────────────────────────────────────────────────────
-evidently>=0.5.0              # feature-drift + target-drift reports
+evidently>=0.7.0,<0.8.0       # feature-drift + target-drift reports; pinned to the 0.7.x
+                               # Report/Dataset/DataDefinition API (pre-0.7 ColumnMapping API removed)
 
 # nannyml is optional (CBPE label-free performance estimation).
 # Uncomment when you reach Layer 9 if you want it:

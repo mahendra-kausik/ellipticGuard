@@ -226,3 +226,42 @@ stages:
       hash: md5
       md5: 060a05e81079667729977fce1accbb69
       size: 1227
+  monitor_drift:
+    cmd: python pipelines/monitor_drift.py
+    deps:
+    - path: data/processed/nodes.parquet
+      hash: md5
+      md5: a0d9f4cb9d9a61ef75e2f53af36ce3f2
+      size: 94558368
+    - path: pipelines/monitor_drift.py
+      hash: md5
+      md5: 280b1f5223e78369437a4c56363db809
+      size: 1610
+    - path: src/data/loaders.py
+      hash: md5
+      md5: c349e22704005d3e82ecff3f27dc7da5
+      size: 2803
+    - path: src/data/split.py
+      hash: md5
+      md5: 324425c89fc095ac32499e8fca6ce754
+      size: 2207
+    - path: src/monitoring/drift.py
+      hash: md5
+      md5: 03ab521952727a8f4a2f8b8e57c12d2c
+      size: 3746
+    params:
+      params.yaml:
+        monitor.report_step: 43
+        split.test_end: 49
+        split.test_start: 35
+        split.train_end: 34
+        split.val_start: 30
+    outs:
+    - path: data/processed/drift_by_time_step.csv
+      hash: md5
+      md5: a86db79cc16448d6209cf9cd5e12d45a
+      size: 1116
+    - path: data/processed/drift_report.html
+      hash: md5
+      md5: e4ffd2c4420c3e39a7c6e1e470d5f39c
+      size: 15878218

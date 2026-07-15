@@ -93,3 +93,20 @@ stages:
     outs:
       - data/processed/per_time_step_f1.csv
       - data/processed/evaluation.json
+  monitor_drift:
+    cmd: python pipelines/monitor_drift.py
+    deps:
+      - data/processed/nodes.parquet
+      - src/data/loaders.py
+      - src/data/split.py
+      - src/monitoring/drift.py
+      - pipelines/monitor_drift.py
+    params:
+      - split.train_end
+      - split.val_start
+      - split.test_start
+      - split.test_end
+      - monitor.report_step
+    outs:
+      - data/processed/drift_by_time_step.csv
+      - data/processed/drift_report.html

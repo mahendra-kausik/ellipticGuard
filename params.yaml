@@ -32,3 +32,9 @@ evaluate:
   calibration_methods: [sigmoid, isotonic]
   shap_sample: 2000
   shap_top_n: 15
+
+monitor:
+  # Layer 9 — Evidently drift reference is always split.train (steps 1-29, fit-only).
+  # report_step picks one late window to render as a full human-readable HTML report;
+  # 43 is the T43 regime-change step already surfaced in Layer 6 (D-023).
+  report_step: 43
