@@ -5,14 +5,14 @@ Single source of truth for "where are we?" Update at the end of every session an
 ---
 
 ## Current state
-- **Active layer:** Layer 6 — Evaluation, calibration, drift story (COMPLETE, gate met)
-- **Last gate passed:** Layer 6 — Honest evaluation, calibration & the drift story
-- **Next action:** Read `PROJECT_PLAN.md` §6 Layer 7. Build the FastAPI serving app: `/predict` loads the **Production** model from the MLflow registry (not a hardcoded path), `/health` endpoint, Dockerfile, local run. Decide there whether to serve v2 (raw) or promote a calibrated model — Layer 6 deliberately left that choice open (D-023).
+- **Active layer:** Layer 7 — Serving API (FastAPI) (COMPLETE, gate met)
+- **Last gate passed:** Layer 7 — FastAPI serving app loads Production model via MLflow alias
+- **Next action:** Read `PROJECT_PLAN.md` §6 Layer 8 (optional GNN comparison) or Layer 9 (monitoring). Owner to decide which comes next — Layer 8 is nice-to-have per §9, Layer 9 is must-have.
 - **Blockers / open questions:**
-  - None currently open. Layer 7 needs to decide what "Production" means for a locally-registered model (v2 raw vs. a newly-promoted calibrated version) — the calibrated model from Layer 6 was logged to MLflow (run `champion_evaluation`) but intentionally not registered.
+  - Layer 11 (HF Spaces deployment) must resolve a Docker artifact-path portability issue found while building `api/Dockerfile`: the local sqlite MLflow store bakes absolute Windows paths into the registry, so a Linux container can't currently resolve `models:/elliptic-illicit@production`. See D-024 for the full analysis and options. Not a Layer 7 gate blocker (gate only requires `TestClient`-level verification, which passes).
 
 ### Owner action items — things Claude Code cannot do
-_(none right now — nothing blocking Layer 7)_
+_(none right now — nothing blocking Layer 8/9)_
 
 ---
 
@@ -26,7 +26,7 @@ _(none right now — nothing blocking Layer 7)_
 | 4 | Graph features | complete | yes | 7 causal topology features in `src/features/graph.py`; DVC `build_graph_features` stage |
 | 5 | Advanced model (XGBoost) | complete | yes | XGBoost, scale_pos_weight; provided-166 beat +graph-173 on test F1; registered `elliptic-illicit` v2, `serving_candidate` |
 | 6 | Evaluation, calibration, drift story | complete | yes | per-time-step F1 curve surfaces T43 collapse (0.855→0.028); calibration (sigmoid) + Brier; lean SHAP |
-| 7 | Serving API (FastAPI) | not started | — | loads Production model |
+| 7 | Serving API (FastAPI) | complete | yes | `/predict` + `/health` via `models:/elliptic-illicit@production`; raw v2 probability served |
 | 8 | GNN comparison (OPTIONAL) | not started | — | Colab free; owner notebooks |
 | 9 | Monitoring & observability | not started | — | Evidently / NannyML |
 | 10 | Retraining loop & CI/CD (replay) | not started | — | flag fires at T43 |
@@ -57,6 +57,14 @@ _(none right now — nothing blocking Layer 7)_
 
 ## Changelog
 <!-- Newest on top. One block per session/gate. -->
+
+### 2026-07-15 — Layer 7
+- **Layer worked on:** Layer 7 — Serving API (FastAPI)
+- **What changed:** `pipelines/promote_model.py` — idempotent script that finds the `serving_candidate=true` registered version (falls back to latest) and sets the `elliptic-illicit@production` MLflow alias (MLflow 3.x deprecates stages — see D-024). `src/serving/app.py` — FastAPI app: `get_model()`/`get_model_version()` lazily load `models:/elliptic-illicit@production` (`lru_cache`'d, so importing the module doesn't require a live registry), `PredictRequest`/`PredictResponse` pydantic v2 schemas (166-length feature-vector validation using the canonical `MODEL_FEATURE_COLS` from `src/models/baseline.py` — not re-declared), `GET /health` (confirms the model loads, returns its version), `POST /predict` (rebuilds a 1-row DataFrame in the correct column order, returns v2's **raw** `predict_proba` — no separate calibrated field, per D-024/D-023). `api/Dockerfile` — CPU-only `python:3.11-slim` image, copies `src/`, `mlflow.db`, and `mlruns/` (the local registry's artifact store), `uvicorn` entrypoint on port 7860 for HF Spaces. `tests/test_serving.py` — three tests: `/health` returns OK, `/predict` scores a real illicit test-range row higher than a real licit one (via `TestClient`, promoting the alias first), and a malformed (165-length) feature vector is rejected with 422 at the trust boundary.
+- **Gate evidence:** `pytest -q` → `17 passed` (14 prior + 3 new). `python pipelines/promote_model.py` → `elliptic-illicit@production -> v2 (feature_set=provided)`. `TestClient` hits confirm: `/health` → 200 `{"status":"ok","model_version":"2"}`; `/predict` on a real steps-35–49 illicit row scores higher than a real licit row, both valid probabilities in `[0,1]`. Docker image builds structurally (`api/Dockerfile` written per the plan) but **is not verified to serve predictions inside a container** on this machine — discovered the local sqlite MLflow store bakes absolute Windows artifact paths into the registry, which won't resolve inside a Linux container; Docker Desktop's daemon was also not running when tested. This is a known local-file-store limitation already flagged in `PROJECT_PLAN.md` §8, documented concretely in D-024, and does not block the Layer 7 gate (which only requires `TestClient`-level `/health`/`/predict`, both of which pass).
+- **Decisions logged:** D-024 (serve v2's raw probability rather than a mismatched calibrated field; Production exposed via MLflow alias not deprecated stages; Docker artifact-path portability limitation documented for Layer 11 to resolve, not silently worked around).
+- **Gate met?:** yes — approval requested from owner.
+- **Next action:** Owner to choose Layer 8 (optional GNN comparison) or Layer 9 (monitoring & observability, must-have per §9). Layer 11 will need to resolve the Docker artifact-path issue (D-024) before a live HF Spaces deployment can actually serve predictions.
 
 ### 2026-07-15 — Layer 6
 - **Layer worked on:** Layer 6 — Honest evaluation, calibration & the drift story
