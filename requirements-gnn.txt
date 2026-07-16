@@ -1,0 +1,14 @@
+# Layer 8 (optional) — GNN comparison dependencies. Install separately:
+#   pip install -r requirements-gnn.txt
+#
+# Deliberately NOT in requirements.txt: the serving image (Dockerfile) installs
+# requirements.txt in full and is already 3.43 GB. src/serving/app.py never imports
+# torch, so adding it there would roughly double the image for nothing. See D-030.
+#
+# torch-geometric is NOT used. src/models/gnn.py needs exactly two primitives —
+# a normalized sparse adjacency matmul and mean neighbour aggregation — both of
+# which are a few lines of plain torch. See D-030.
+#
+# The default PyPI wheel is CPU-only, which is what we want: PROJECT_PLAN.md's
+# core pipeline must not depend on a GPU.
+torch>=2.2
