@@ -78,12 +78,13 @@ uvicorn src.serving.app:app --reload
 curl localhost:8000/health
 ```
 
-**Build the container** (what Hugging Face Spaces runs):
+**Build the container** (what Hugging Face Spaces runs — verified serving a real illicit row at p=0.9946 and a real licit row at p=0.0253, with no MLflow registry inside the container):
 
 ```bash
 python pipelines/export_model.py             # alias -> api/model/ weights
 docker build -t ellipticguard .
 docker run -p 7860:7860 ellipticguard
+curl localhost:7860/health                   # {"status":"ok","model_version":"2"}
 ```
 
 ## Results
