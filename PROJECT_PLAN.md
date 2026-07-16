@@ -68,6 +68,7 @@ Treat these as *reference points to reproduce and cite honestly*, not numbers to
 elliptic-guard/
 ├── CLAUDE.md  PROJECT_PLAN.md  DECISIONS.md  SESSION_LOG.md
 ├── .env.example  .gitignore  requirements.txt  README.md
+├── Dockerfile       # root-level: HF Docker Spaces require it here (path not configurable)
 ├── dvc.yaml  params.yaml
 ├── data/            # DVC-tracked, not in git
 ├── src/
@@ -78,7 +79,7 @@ elliptic-guard/
 │   └── serving/     # fastapi app
 ├── pipelines/       # dvc stage entrypoints
 ├── tests/
-├── api/             # Dockerfile + app entry for HF Spaces
+├── api/             # exported @production weights shipped into the image (D-028)
 └── .github/workflows/
 ```
 

@@ -54,3 +54,28 @@ def test_predict_illicit_and_licit(client):
 def test_predict_wrong_length(client):
     resp = client.post("/predict", json={"features": [0.0] * (len(MODEL_FEATURE_COLS) - 1)})
     assert resp.status_code == 422
+
+
+def test_serves_from_exported_weights_without_registry(monkeypatch):
+    """Layer 11: the deployed container has no mlflow.db — prove MODEL_URI/MODEL_VERSION
+    serve from exported weights alone, with every registry lookup made to explode."""
+    import src.serving.app as app_module
+
+    monkeypatch.setattr(app_module, "MODEL_URI", "api/model")
+    monkeypatch.setenv("MODEL_VERSION", "2")
+    monkeypatch.setattr(
+        app_module, "MlflowClient", lambda *a, **kw: pytest.fail("registry was queried")
+    )
+    app_module.get_model.cache_clear()
+    app_module.get_model_version.cache_clear()
+
+    try:
+        client = TestClient(app_module.app)
+        assert client.get("/health").json() == {"status": "ok", "model_version": "2"}
+
+        resp = client.post("/predict", json={"features": _labeled_row(1)})
+        assert resp.status_code == 200
+        assert 0.0 <= resp.json()["illicit_probability"] <= 1.0
+    finally:
+        app_module.get_model.cache_clear()  # don't leak the exported model into other tests
+        app_module.get_model_version.cache_clear()

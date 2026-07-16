@@ -2,6 +2,8 @@
 
 Loads the Production model (`models:/<name>@production`, set by
 `pipelines/promote_model.py`) from the MLflow registry — never a hardcoded path.
+In the deployed container there is no registry to query, so MODEL_URI points at weights
+exported from that same alias at build time (D-028).
 Serves the champion's raw probability: Layer 6 (D-023) found the registered v2 has
 no leakage-free holdout left to calibrate on, and is already near-calibrated
 (test Brier 0.0268 -> 0.0264 with sigmoid calibration on a different base model) —
@@ -45,14 +47,22 @@ mlflow.set_tracking_uri(os.environ.get("MLFLOW_TRACKING_URI") or f"sqlite:///{RE
 REGISTRY_NAME = os.environ.get("MLFLOW_REGISTERED_MODEL_NAME", "elliptic-illicit")
 THRESHOLD = float(os.environ.get("PREDICT_THRESHOLD", 0.5))
 
+# The registry is the default source of truth. MODEL_URI/MODEL_VERSION exist only for the
+# deployed container, which has no mlflow.db to query — `pipelines/export_model.py` resolves
+# the alias at build time and bakes the weights in. See DECISIONS.md D-028.
+MODEL_URI = os.environ.get("MODEL_URI") or f"models:/{REGISTRY_NAME}@production"
+
 
 @lru_cache(maxsize=1)
 def get_model():
-    return mlflow.xgboost.load_model(f"models:/{REGISTRY_NAME}@production")
+    return mlflow.xgboost.load_model(MODEL_URI)
 
 
 @lru_cache(maxsize=1)
 def get_model_version() -> str:
+    pinned = os.environ.get("MODEL_VERSION")
+    if pinned:
+        return pinned
     return str(MlflowClient().get_model_version_by_alias(REGISTRY_NAME, "production").version)
 
 

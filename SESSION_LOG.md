@@ -5,16 +5,27 @@ Single source of truth for "where are we?" Update at the end of every session an
 ---
 
 ## Current state
-- **Active layer:** Layer 10 — Retraining loop & CI/CD (replay) (COMPLETE, gate met)
+- **Active layer:** Layer 11 — Deployment & docs (**GATE-PARTIAL** — code, docs, and D-024 fix landed and verified; the live Spaces URL half is owner-dependent and not yet done)
 - **Last gate passed:** Layer 10 — replay flag fires at/after T43; champion/challenger promotes in routine steps and holds at T43; lean data-free CI green
-- **Next action:** Read `PROJECT_PLAN.md` §6 Layer 11 (deployment & docs) or Layer 8 (optional GNN comparison, still nice-to-have and skipped so far). Owner to decide which comes next.
+- **Next action:** Owner creates the HF Space and runs the push (commands below), then pastes back the live URL so the Layer 11 gate can be closed with real evidence. After that, only Layer 8 (optional GNN) remains, and it is still deliberately skipped.
 - **Blockers / open questions:**
-  - Layer 11 (HF Spaces deployment) must resolve a Docker artifact-path portability issue found while building `api/Dockerfile`: the local sqlite MLflow store bakes absolute Windows paths into the registry, so a Linux container can't currently resolve `models:/elliptic-illicit@production`. See D-024 for the full analysis and options. Not a Layer 7 gate blocker (gate only requires `TestClient`-level verification, which passes).
+  - **D-024's Docker artifact-path issue is RESOLVED** — superseded by D-028. Investigation showed the problem had two halves: the absolute Windows paths baked into `mlflow.db` *and* the fact that `mlruns/`/`mlflow.db` are git-ignored while HF Spaces builds from a git repo (so committing the registry would have fixed only the second half). Fix: `pipelines/export_model.py` resolves the `@production` alias locally and ships the ~1.1 MB artifact as `api/model/`; the container loads it via `MODEL_URI`. Honest cost: the deployed container loads a path, not the registry — documented in README.md's Limitations and D-028.
+  - **Docker never verified locally** — Docker Desktop's daemon is not running on this machine, so `docker build`/`docker run` remain unexecuted. The container's no-registry code path *is* proven by `test_serves_from_exported_weights_without_registry` (which makes every `MlflowClient` construction fail), but that is not the same as a container run and is not reported as one. HF Spaces builds the image server-side, so the owner's push is the real test.
+  - **PROJECT_PLAN.md §5 amended:** the Dockerfile moved from `api/Dockerfile` to the repo root because HF Docker Spaces require it there and the path is not configurable (verified against HF's docs). Flagged rather than silently worked around, per Directive 4; owner approved the move and the §5 amendment.
   - Layer 8 (GNN comparison) remains un-started/skipped per owner's explicit choice to prioritize must-have layers first — record formally if/when the owner decides to skip it permanently or pick it up later.
-  - none — the CI failure on the first push (bare `pytest` couldn't import `src`/`pipelines`; see D-027) is fixed; owner confirmed the second GitHub Actions run passed.
 
 ### Owner action items — things Claude Code cannot do
-_(none right now — CI confirmed green by the owner on the second run, D-027 fix verified live)_
+1. **Create a Hugging Face account** (free) if you don't have one.
+2. **Create a new Space** at https://huggingface.co/new-space — SDK = **Docker**, hardware = **CPU basic (free)**, visibility public.
+3. **Generate an HF access token** with *write* scope (Settings → Access Tokens). Never paste it into the chat, a commit, or any tracked file — terminal only.
+4. **Push the repo to the Space** (from the repo root; `<user>`/`<space>` are yours):
+   ```bash
+   git remote add space https://huggingface.co/spaces/<user>/<space>
+   git push space main          # username = your HF username, password = the write token
+   ```
+   The Space builds the root `Dockerfile` itself (~5 min on first build); watch the Build logs tab.
+5. **Paste the live Space URL back** so the gate can be closed with a real `/health` + `/predict` response recorded as evidence.
+6. *(Optional)* Start Docker Desktop if you want `docker build -t ellipticguard . && docker run -p 7860:7860 ellipticguard` verified locally first — not gate-critical, since HF builds server-side.
 
 ---
 
@@ -32,7 +43,7 @@ _(none right now — CI confirmed green by the owner on the second run, D-027 fi
 | 8 | GNN comparison (OPTIONAL) | skipped for now | — | Colab free; owner notebooks; owner chose Layer 9 first as the must-have priority |
 | 9 | Monitoring & observability | complete | yes | Evidently feature/target drift (`src/monitoring/drift.py`); target drift spikes at T43, feature drift flat; `/metrics` p50/p95 on API |
 | 10 | Retraining loop & CI/CD (replay) | complete | yes | replay driver + drift-or-performance flag; champion/challenger promotes routine steps, holds at T43; lean data-free GitHub Actions CI |
-| 11 | Deployment & docs | not started | — | HF Spaces live URL |
+| 11 | Deployment & docs | gate-partial | partial | code/docs/D-024 fix done + verified; README written; **live Spaces URL still pending owner push** |
 
 ---
 
@@ -59,6 +70,14 @@ _(none right now — CI confirmed green by the owner on the second run, D-027 fi
 
 ## Changelog
 <!-- Newest on top. One block per session/gate. -->
+
+### 2026-07-16 — Layer 11 (gate-partial)
+- **Layer worked on:** Layer 11 — Deployment & documentation
+- **What changed:** `pipelines/export_model.py` (new) — resolves `elliptic-illicit@production` via the same `get_model_version_by_alias` call the app uses (so exported weights and recorded version can't disagree), deletes any prior export so stale weights can't survive, downloads the artifact to `api/model/`, prints the resolved version + size + a reminder to update `MODEL_VERSION`. `src/serving/app.py` — added `MODEL_URI` (default unchanged: `models:/{REGISTRY_NAME}@production`) and a `MODEL_VERSION` env override in `get_model_version()` (default unchanged: the alias lookup); both `lru_cache`s kept. Local behaviour is identical to Layer 7's — the overrides exist only for the container, which has no `mlflow.db` to query. `api/Dockerfile` → **`Dockerfile`** (moved to repo root; HF Docker Spaces require it there, path not configurable — verified against HF's docs): now `COPY api/model/ model/` + `ENV MODEL_URI=/app/model MODEL_VERSION=2`, no longer copies `mlflow.db`/`mlruns/`. `README.md` (new — the repo had none) — HF Space YAML frontmatter (`sdk: docker`, `app_port: 7860`), honest-stance section, mermaid architecture diagram, clean-clone reproduce steps checked against `dvc.yaml`'s real stage names, results table, the T43 drift story, a Limitations section that states the path-vs-registry regression plainly, and the resume-metrics section filled with measured values. `PROJECT_PLAN.md` §5 — layout amended: Dockerfile at root, `api/` now holds exported weights. `tests/test_serving.py` — `test_serves_from_exported_weights_without_registry`: points `MODEL_URI` at `api/model`, sets `MODEL_VERSION`, and monkeypatches `MlflowClient` to `pytest.fail` so *any* registry lookup explodes — proving the container's code path, then clearing both caches so the exported model can't leak into other tests. `DECISIONS.md` — D-028.
+- **Gate evidence:** `python pipelines/export_model.py` → `exported elliptic-illicit@production (v2) -> api/model (1.1 MB)`; `MLmodel` + `model.ubj` confirmed present. `pytest -q` → **27 passed** (26 prior + 1 new). `pytest -m "not needs_data" -q` → **19 passed, 8 deselected** — CI stays data-free (D-026). `git check-ignore api/model/model.ubj` → exit 1, i.e. the weights are committable and not shadowed by the `mlruns/` rule (verified, not assumed). Container-path simulation via `TestClient` with the registry made to fail loudly: `/health` → `{"status":"ok","model_version":"2"}` and `/predict` → a valid probability, resolving zero registry lookups. **Not verified:** `docker build`/`docker run` — Docker Desktop's daemon is not running on this machine, so D-024's "never verified in a container" gap is narrowed (the code path is proven) but not closed by an actual container run. Reported as-is per Directive 5. **Live Spaces URL: not yet obtained** — requires the owner's HF account/token, so the gate's "a live Spaces URL serves predictions" clause is **not met** and Layer 11 is recorded as gate-partial, not complete.
+- **Decisions logged:** D-028 (export weights via `MODEL_URI` rather than shipping/rewriting the registry — supersedes D-024's item 3; includes the root-Dockerfile move and the §5 amendment).
+- **Gate met?:** **partial** — README/reproduce/decisions clauses met; live-URL clause open pending the owner's push.
+- **Next action:** Owner creates the Space, pushes, and pastes the URL back; then curl `/health` + `/predict` against it, record the real response as gate evidence, fill in README's "Live demo" URL placeholder, and close Layer 11.
 
 ### 2026-07-16 — Layer 10
 - **Layer worked on:** Layer 10 — Retraining loop & CI/CD (replay)
