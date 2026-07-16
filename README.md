@@ -121,20 +121,26 @@ What the retraining loop found (Layer 10): the replay's drift-or-performance fla
 
 **Conclusion: T43 is a regime change, not a staleness problem.** More training data doesn't help when the thing you're detecting has changed shape. The correct response is escalation to a human analyst, and the loop is designed to hold rather than promote a model that merely looks new (D-023, D-026).
 
-## Live demo
+## Running the service
 
-Hugging Face Spaces, free CPU-basic tier (sleeps after inactivity — first request wakes it):
+**There is no live demo URL yet, and the reason is worth stating plainly:** this project targeted Hugging Face Spaces' free CPU tier, and HF has since moved Docker (and Gradio) Spaces behind a paid plan — only static Spaces remain free, and a static Space has no Python process to run FastAPI in. Rather than quietly swap in another host or drop the requirement, the deployment is postponed and the gate left open (D-029).
 
-**URL:** _pending deployment — see SESSION_LOG.md_
+What *is* verified: the container serves correctly. Inside a Linux container with no MLflow registry present at all, a real illicit transaction from the test window scores **0.9946** and a real licit one **0.0253**. One command reproduces it from a clean clone:
 
 ```bash
-curl -X POST <space-url>/predict \
+docker build -t ellipticguard . && docker run -p 7860:7860 ellipticguard
+```
+
+```bash
+curl -X POST localhost:7860/predict \
   -H 'Content-Type: application/json' \
   -d '{"features": [/* 166 floats: time_step + feat_0..feat_164 */]}'
 ```
 
+The real response for a known illicit transaction (txId 70384401, time step 35), copied from an actual container run:
+
 ```json
-{"illicit_probability": 0.97, "prediction": 1, "threshold": 0.5,
+{"illicit_probability": 0.9946, "prediction": 1, "threshold": 0.5,
  "model_name": "elliptic-illicit", "model_version": "2"}
 ```
 
@@ -146,6 +152,7 @@ Stated plainly, because each one is a real gap:
 
 - **The deployed container loads weights from a path, not the registry.** Locally, the app resolves `models:/elliptic-illicit@production` — the registry is the source of truth. But `mlflow.db` bakes absolute Windows artifact paths into `model_versions.source`, so the container can't query it; `pipelines/export_model.py` resolves the alias at build time and ships the ~1 MB artifact instead. The alias still decides *what* ships, but the running Space resolves `/app/model`. A hosted MLflow tracking server is the real fix and would remove this entirely (D-028).
 - **`PREDICT_THRESHOLD` is 0.5, untuned.** A sensible default, not an operating point chosen from a precision/recall tradeoff.
+- **No live deployment yet.** HF Spaces' free tier dropped Docker support mid-build (only static Spaces are free now, and those can't run a server process). The container is verified serving; the host is undecided. Free options all carry a catch worth knowing: Render's free tier spins down after 15 min idle and caps at 512 MB RAM (which would mean loading `model.ubj` via `xgboost.Booster` instead of importing mlflow), while Fly.io and Cloud Run now require a card on file (D-029).
 - **No GNN comparison.** Layer 8 (static GCN / EvolveGCN, reference figures ≈ 0.63 / 0.72) was scoped as nice-to-have and skipped in favor of finishing the serving, monitoring, and retraining layers. A clean classical model with honest validation and a live deployment beats a half-finished GNN.
 - **The 72 aggregated features are opaque.** They're anonymized by the dataset's publisher, so the SHAP ranking (`feat_52`, `feat_58`, `feat_89` lead) identifies *which* features matter but cannot say what they mean.
 - **Unknown-labeled nodes (157,205 of 203,769) are excluded** from supervised training and evaluation. They're kept in the assembled table for graph structure, but the operative class balance is ~9.8% illicit over the 46,564 labeled nodes (D-002, D-016).
