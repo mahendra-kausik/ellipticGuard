@@ -39,6 +39,22 @@ monitor:
   # 43 is the T43 regime-change step already surfaced in Layer 6 (D-023).
   report_step: 43
 
+gnn:
+  # Layer 8 (optional) — GCN / GraphSAGE / EvolveGCN comparison, plain torch (D-030).
+  # Every knob here is identical across all three models — that equality is the
+  # fairness claim the comparison rests on. class_weight is NOT set here: it's
+  # derived per run via scale_pos_weight() on split.train, the same derivation
+  # XGBoost's champion already uses (see D-030), so there's one shared number to
+  # defend, not three hand-picked ones (the notebooks used [1,9] vs [1,5]).
+  hidden1: 64
+  hidden2: 32
+  dropout: 0.5
+  lr: 0.001
+  weight_decay: 0.0001
+  max_epochs: 60
+  patience: 8
+  seeds: [0, 1, 2]
+
 retrain:
   # Layer 10 — replay driver + drift-or-performance flag + champion/challenger gate.
   # Champion = the Layer 6 train-only model (steps 1-29). f1_floor: well under the

@@ -59,7 +59,7 @@ Treat these as *reference points to reproduce and cite honestly*, not numbers to
 - **Monitoring:** Evidently (drift); NannyML CBPE (label-free perf estimation, optional).
 - **CI/CD + retraining:** GitHub Actions.
 - **Testing:** pytest.
-- **Optional GNN comparison:** PyTorch + PyTorch Geometric on Colab free.
+- **Optional GNN comparison:** plain PyTorch (CPU, in-repo), not PyTorch Geometric on Colab — owner-approved deviation, see D-030.
 
 ---
 
@@ -124,8 +124,8 @@ Build: FastAPI app; endpoint accepts a transaction's feature vector (and optiona
 **Gate:** `POST /predict` returns a valid scored response locally for a known illicit and a known licit example; `/health` returns OK; a test hits the app via `TestClient`.
 
 ### Layer 8 (OPTIONAL) — GNN comparison
-Build (only if time allows): clean re-implementation of static GCN and EvolveGCN (owner's notebooks as reference, bugs fixed & logged) on Colab free; compare to the classical champion under the **same temporal split** and metric.
-**Gate:** a fair, same-split comparison table (classical vs GCN vs EvolveGCN); any notebook bugs fixed are logged in `DECISIONS.md`. If skipped, record the skip in `SESSION_LOG.md`.
+Build: clean re-implementation of GCN, GraphSAGE, and EvolveGCN in plain PyTorch, run **local CPU, in-repo** (not Colab/PyG — owner-approved deviation, D-030: the graph is small enough for full-batch CPU training in minutes, and in-repo means the GNNs import the exact same split, preprocessor, class weight, and `evaluate()` code as the classical champion, so fairness is provable by shared imports and reproducible via `dvc repro`); compare to the classical champion under the **same temporal split** and metric.
+**Gate:** a fair, same-split comparison table (classical vs GCN vs GraphSAGE vs EvolveGCN); any notebook bugs fixed are logged in `DECISIONS.md`. If skipped, record the skip in `SESSION_LOG.md`.
 
 ### Layer 9 — Monitoring & observability
 Build: Evidently feature-drift + target-drift reports across time steps (train as reference vs later steps as current); optional NannyML CBPE to estimate illicit performance without labels; structured logging + request latency capture + a `/metrics` endpoint on the API.

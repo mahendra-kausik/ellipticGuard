@@ -136,3 +136,31 @@ stages:
     metrics:
       - metrics/quality_gate.json:
           cache: false
+  train_gnn:
+    cmd: python pipelines/train_gnn.py
+    deps:
+      - data/processed/nodes.parquet
+      - data/processed/edges.parquet
+      - data/processed/advanced_metrics.json
+      - src/data/split.py
+      - src/models/baseline.py
+      - src/models/advanced.py
+      - src/models/evaluate.py
+      - src/models/gnn.py
+      - pipelines/train_gnn.py
+    params:
+      - split.train_end
+      - split.val_start
+      - split.test_start
+      - split.test_end
+      - gnn.hidden1
+      - gnn.hidden2
+      - gnn.dropout
+      - gnn.lr
+      - gnn.weight_decay
+      - gnn.max_epochs
+      - gnn.patience
+      - gnn.seeds
+    outs:
+      - data/processed/gnn_metrics.json
+      - data/processed/gnn_per_time_step.csv

@@ -97,10 +97,15 @@ All figures measured on the **test window (time steps 35–49)**, which is stric
 | Random Forest — registry v1 | 0.752 | 0.770 | 0.849 | 0.675 |
 | **XGBoost, provided features — registry v2 (champion)** | **0.806** | **0.800** | 0.891 | 0.735 |
 | XGBoost, provided + 7 graph-topology features | 0.797 | 0.802 | 0.871 | 0.735 |
+| GraphSAGE (mean-agg, plain PyTorch, optional Layer 8) | 0.496 ± 0.040 | 0.502 | — | — |
+| GCN (plain PyTorch, optional Layer 8) | 0.450 ± 0.015 | 0.475 | — | — |
+| EvolveGCN (plain PyTorch, optional Layer 8) | 0.120 ± 0.028 | 0.103 | — | — |
 
 Reference: Weber et al. 2019 ([arXiv:1908.02591](https://arxiv.org/abs/1908.02591)) report RF ≈ 0.788 illicit-F1 on the same temporal split. Our RF measured 0.752 and our XGBoost champion 0.806 — reported as measured, not tuned toward their number.
 
 **The graph features did not win.** Seven causal per-time-step topology features (in/out-degree, unique neighbors, PageRank, clustering coefficient, component size, avg neighbor degree) produced a *marginal AUC-PR edge* but slightly **lower** F1 than the provided 166 features alone. The champion was selected on test F1, so the provided-only model won. The likely reason: the dataset's own 72 "aggregated" features already encode one-hop neighborhood information, leaving topology position largely redundant (D-021, D-022).
+
+**GNNs lose to the champion (optional Layer 8).** GCN, GraphSAGE, and EvolveGCN were re-implemented from scratch in plain PyTorch (no PyTorch Geometric — the graph is small enough that hand-rolled sparse adjacency ops run in minutes on CPU), trained under the *exact same* split, features, preprocessor, class weight, and `evaluate()` code as the classical models (mean ± std across 3 seeds each). All three lose to the XGBoost champion — consistent with Weber et al.'s own table, where RF beat every GNN they tried. GCN's F1 sits well under the published ≈0.628 figure for the same architecture; a diagnostic run with a much larger training budget closed only a small part of that gap (val F1 reached 0.77 while test F1 only reached 0.51), pointing to a genuine train→test generalization gap rather than an implementation bug — the per-time-step curve below shows all three GNNs also collapsing at step 43, independently corroborating the drift story. Full reasoning in `DECISIONS.md` D-030/D-031.
 
 **Calibration** (test Brier, lower is better): uncalibrated 0.0268 → **0.0264** with sigmoid (isotonic 0.0266). The margin is small enough that the served model returns a raw, honestly-labeled probability rather than a calibrated field borrowed from a different base model (D-023, D-024).
 
