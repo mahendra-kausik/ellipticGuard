@@ -49,7 +49,7 @@ _(none — live hosting is postponed by owner decision, D-029. When it resumes, 
 | 5 | Advanced model (XGBoost) | complete | yes | XGBoost, scale_pos_weight; provided-166 beat +graph-173 on test F1; registered `elliptic-illicit` v2, `serving_candidate` |
 | 6 | Evaluation, calibration, drift story | complete | yes | per-time-step F1 curve surfaces T43 collapse (0.855→0.028); calibration (sigmoid) + Brier; lean SHAP |
 | 7 | Serving API (FastAPI) | complete | yes | `/predict` + `/health` via `models:/elliptic-illicit@production`; raw v2 probability served |
-| 8 | GNN comparison (OPTIONAL) | **complete** | **yes** | real run: XGBoost champion F1=0.806 vs GCN 0.450±0.015, GraphSAGE 0.496±0.040, EvolveGCN 0.120±0.028 — all three lose to the champion, a legitimate result (D-030, D-031); T43 collapse reproduces in all three GNNs too |
+| 8 | GNN comparison (OPTIONAL) | **complete** | **yes** | retuned run (200/20 epoch budget, D-032): XGBoost champion F1=0.806 vs GCN 0.554±0.033, GraphSAGE 0.565±0.008, EvolveGCN 0.120±0.028 (unchanged by the retune) — all three lose to the champion, a legitimate result (D-030/D-031/D-032); T43 collapse reproduces in all three GNNs too |
 | 9 | Monitoring & observability | complete | yes | Evidently feature/target drift (`src/monitoring/drift.py`); target drift spikes at T43, feature drift flat; `/metrics` p50/p95 on API |
 | 10 | Retraining loop & CI/CD (replay) | complete | yes | replay driver + drift-or-performance flag; champion/challenger promotes routine steps, holds at T43; lean data-free GitHub Actions CI |
 | 11 | Deployment & docs | gate-partial (hosting postponed) | partial | container **verified serving** (real illicit 0.9946 / licit 0.0253, no registry inside); D-024 closed; README written; **live URL blocked — HF free tier dropped Docker (D-029), host TBD** |
@@ -79,6 +79,15 @@ _(none — live hosting is postponed by owner decision, D-029. When it resumes, 
 
 ## Changelog
 <!-- Newest on top. One block per session/gate. -->
+
+### 2026-07-17 — Layer 8 retune (owner-requested, post-gate)
+- **What changed:** Owner asked whether the GNN F1/AUC-PR numbers could be improved. `params.yaml` `gnn.max_epochs`/`gnn.patience` raised 60/8 → 200/20 (matching the notebooks' own budget), identical across all three models — the equal-budget fairness property from D-030 is preserved. Re-ran the full `pipelines/train_gnn.py` pipeline.
+- **New results (test illicit-F1, mean ± std, 3 seeds):** GCN **0.450 → 0.554** (+0.104), GraphSAGE **0.496 → 0.565** (+0.069), EvolveGCN **0.120 → 0.120** (unchanged — reproduced to the exact same per-seed values, confirming its early stopping already triggered before epoch 60 in both runs; its ceiling is architectural, not budget-limited). XGBoost champion unchanged at 0.806 (not retrained). All three GNNs still lose to the champion. T43 collapse still reproduces in all three GNNs. MLflow registry re-checked — still only `elliptic-illicit` v1/v2.
+- **Verification:** `pytest -q` → 34 passed, no regressions.
+- **Decision logged:** D-032 (the retune rationale, why EvolveGCN didn't move, and why a per-model hyperparameter search was deliberately not done).
+- **Docs updated:** `README.md` results table + interpretive paragraph, this changelog entry, `params.yaml` inline comment.
+- **Gate status:** unaffected — Layer 8's gate was already met at the previous entry; this is a post-gate improvement, not a re-gating.
+- **Next action:** None required. Only Layer 11's hosting-venue choice (D-029) remains open.
 
 ### 2026-07-17 — Layer 8 executed (8a/8b/8c) — GATE MET
 - **Layer worked on:** Layer 8 (OPTIONAL) — GNN comparison. Executed all three subparts (8a core module + tests, 8b training pipeline + real run, 8c docs + gate) in one session, per the owner-approved plan from the prior planning session.

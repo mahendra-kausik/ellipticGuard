@@ -51,8 +51,13 @@ gnn:
   dropout: 0.5
   lr: 0.001
   weight_decay: 0.0001
-  max_epochs: 60
-  patience: 8
+  # max_epochs/patience raised from 60/8 to match the notebooks' own budget
+  # (200/20) after a diagnostic showed the smaller budget was leaving real
+  # signal on the table (GCN seed 0: val F1 0.41 -> 0.77 with the bigger
+  # budget) without closing the whole gap to the literature figure (D-032).
+  # Still identical across all three models -- the fairness property holds.
+  max_epochs: 200
+  patience: 20
   seeds: [0, 1, 2]
 
 retrain:
