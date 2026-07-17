@@ -130,7 +130,7 @@ Two ready-to-paste `\resumeProjectHeading` blocks (same macros/format as the Rid
 
 ```latex
 \resumeProjectHeading
-          {\href{https://github.com/mahendra-kausik/EllipticGuard}{\textbf{\large{\underline{EllipticGuard: AML Transaction Detector}}} \href{https://github.com/mahendra-kausik/EllipticGuard}{\raisebox{-0.1\height}\faExternalLink }} $|$ \large{\underline{Python, FastAPI, Docker, XGBoost, MLflow, DVC}}}{}
+          {\href{https://github.com/mahendra-kausik/ellipticGuard}{\textbf{\large{\underline{EllipticGuard: AML Transaction Detector}}} \href{https://github.com/mahendra-kausik/EllipticGuard}{\raisebox{-0.1\height}\faExternalLink }} $|$ \large{\underline{Python, FastAPI, Docker, XGBoost, MLflow, DVC}}}{}
           \resumeItemListStart
             \resumeItem{\normalsize{Built and containerized a FastAPI microservice (\texttt{/predict}, \texttt{/health}, \texttt{/metrics}) serving illicit-transaction predictions at \textbf{0.73 ms p50 / 6.48 ms p95} latency on a 1.1 MB model; verified end-to-end in a clean Linux Docker container.}}
 
@@ -145,7 +145,7 @@ Two ready-to-paste `\resumeProjectHeading` blocks (same macros/format as the Rid
 
 ```latex
 \resumeProjectHeading
-          {\href{https://github.com/mahendra-kausik/EllipticGuard}{\textbf{\large{\underline{EllipticGuard: AML Transaction Detector}}} \href{https://github.com/mahendra-kausik/EllipticGuard}{\raisebox{-0.1\height}\faExternalLink }} $|$ \large{\underline{Python, XGBoost, scikit-learn, PyTorch, Evidently, MLflow}}}{}
+          {\href{https://github.com/mahendra-kausik/ellipticGuard}{\textbf{\large{\underline{EllipticGuard: AML Transaction Detector}}} \href{https://github.com/mahendra-kausik/EllipticGuard}{\raisebox{-0.1\height}\faExternalLink }} $|$ \large{\underline{Python, XGBoost, scikit-learn, PyTorch, Evidently, MLflow}}}{}
           \resumeItemListStart
             \resumeItem{\normalsize{Trained an XGBoost illicit-Bitcoin-transaction classifier reaching \textbf{0.806 illicit-class F1} (0.800 AUC-PR) on a strict temporal split of the Elliptic graph (\textasciitilde9.8\% positive), beating RF, LR, and from-scratch GCN/GraphSAGE/EvolveGCN baselines.}}
 
