@@ -132,13 +132,14 @@ What the retraining loop found (Layer 10): the replay's drift-or-performance fla
 
 **Hosting venue:** Google Cloud Run, not the originally planned Hugging Face Spaces — HF moved Docker (and Gradio) Spaces behind a paid plan, leaving only static Spaces free, which can't run a Python process (D-029). Cloud Run runs on the owner's existing GCP trial credit rather than a pure always-free tier, so once live this will be a **deliberately time-limited demo**, expected to stop working around the trial's ~3-month mark (D-034). `docker run -p 7860:7860 ellipticguard` is the permanent, always-reproducible path — the live URL is a convenience on top of it, not the source of truth.
 
-As of this commit the deploy command itself hasn't been run yet — it's an outward-facing, billed action, so it's left for the owner to execute deliberately rather than fired unattended:
+**Live URL:** https://ellipticguard-507124978062.us-central1.run.app — deployed 2026-07-31, expected to run until the GCP trial credit or period lapses (~3 months out), after which `docker run` below is the durable path.
 
 ```bash
-gcloud run deploy ellipticguard --project project-d2e31364-d592-4a21-801 \
-  --source . --region us-central1 --port 7860 \
-  --memory 512Mi --min-instances 0 --allow-unauthenticated
+curl https://ellipticguard-507124978062.us-central1.run.app/health
+# {"status":"ok","model_version":"2"}
 ```
+
+The live service returns the exact same probabilities as every local check below — verified by posting the same real illicit/licit fixture rows to the live URL and diffing against the local container's output: **bit-for-bit identical** (`0.9945693016052246` / `0.025330474600195885`).
 
 What *is* verified locally: the container serves correctly, and does so identically before and after the image was slimmed from 919 MB to 300 MB — the same real illicit and licit fixture rows scored bit-for-bit identical probabilities on both images. Inside a Linux container with no MLflow registry present at all, a real illicit transaction from the test window scores **0.9946** and a real licit one **0.0253**. One command reproduces it from a clean clone:
 
@@ -167,7 +168,7 @@ Stated plainly, because each one is a real gap:
 
 - **The deployed container loads weights from a path, not the registry.** Locally, the app resolves `models:/elliptic-illicit@production` — the registry is the source of truth. But `mlflow.db` bakes absolute Windows artifact paths into `model_versions.source`, so the container can't query it; `pipelines/export_model.py` resolves the alias at build time and ships the ~1 MB artifact instead. The alias still decides *what* ships, but the running Space resolves `/app/model`. A hosted MLflow tracking server is the real fix and would remove this entirely (D-028).
 - **`PREDICT_THRESHOLD` is 0.5, untuned.** A sensible default, not an operating point chosen from a precision/recall tradeoff.
-- **No live URL as of this commit.** HF Spaces' free tier dropped Docker support mid-build (D-029). The chosen replacement is Google Cloud Run, on the owner's existing GCP trial credit — a deliberate, time-limited exception to this project's free-tier-only rule (D-034). The container is built, slimmed (919 MB → 300 MB), and verified serving identical predictions before and after slimming; the `gcloud run deploy` command itself is left for the owner to run by hand, since it's a real-money, publicly-reachable action. Once the trial credit or period lapses (~3 months out), the link is expected to stop working — `docker run` remains the permanent reproduction path.
+- **Live URL is time-limited by design.** HF Spaces' free tier dropped Docker support mid-build (D-029); the replacement is Google Cloud Run, on the owner's existing GCP trial credit — a deliberate, time-limited exception to this project's free-tier-only rule (D-034). https://ellipticguard-507124978062.us-central1.run.app is live and verified as of 2026-07-31, but is expected to stop working once the trial credit or period lapses (~3 months out) — `docker run` remains the permanent reproduction path.
 - **No GNN comparison.** Layer 8 (static GCN / EvolveGCN, reference figures ≈ 0.63 / 0.72) was scoped as nice-to-have and skipped in favor of finishing the serving, monitoring, and retraining layers. A clean classical model with honest validation and a live deployment beats a half-finished GNN.
 - **The 72 aggregated features are opaque.** They're anonymized by the dataset's publisher, so the SHAP ranking (`feat_52`, `feat_58`, `feat_89` lead) identifies *which* features matter but cannot say what they mean.
 - **Unknown-labeled nodes (157,205 of 203,769) are excluded** from supervised training and evaluation. They're kept in the assembled table for graph structure, but the operative class balance is ~9.8% illicit over the 46,564 labeled nodes (D-002, D-016).

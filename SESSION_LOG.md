@@ -5,10 +5,9 @@ Single source of truth for "where are we?" Update at the end of every session an
 ---
 
 ## Current state
-- **Active layer:** none — Layer 8 (OPTIONAL, GNN comparison) is **COMPLETE**, gate met.
-- **Also open:** Layer 11 — Deployment & docs (**GATE-PARTIAL**, D-034 — hosting venue decided (Cloud Run), image slimmed and verified (919 MB → 300 MB), everything upstream of the live URL is done; the `gcloud run deploy` command itself is the one remaining step, deliberately left for the owner to run — see Owner action items below)
-- **Last gate passed:** Layer 8 (OPTIONAL) — GNN comparison. Real, honestly-reported same-split table: XGBoost champion 0.806 vs GCN 0.450±0.015 / GraphSAGE 0.496±0.040 / EvolveGCN 0.120±0.028. See D-030/D-031 and the 2026-07-17 changelog entry below for the full evidence trail (unit-tested tensor math, a diagnostic ruling out undertraining, T43 collapse reproduced in all three GNNs).
-- **Next action:** owner runs the `gcloud run deploy` command below, then this session's changelog entry can be closed out with the live URL.
+- **Active layer:** none — all must-have layers (0–7, 9–11) and the optional Layer 8 are **COMPLETE**, gates met.
+- **Last gate passed:** Layer 11 — Deployment & docs. Live URL https://ellipticguard-507124978062.us-central1.run.app serves `/predict` and `/health`, verified returning bit-for-bit identical probabilities to every local check (D-034).
+- **Next action:** none required. Owner should set a reminder to tear down the Cloud Run service before the GCP trial credit/period lapses (~3 months from 2026-07-31) — see Owner action items below.
 
 ### Layer 8 subpart split (recorded per CLAUDE.md's "split a too-big layer into logical subparts" rule)
 
@@ -34,16 +33,10 @@ Layer 8 is three separable pieces with different risk profiles, so it splits cle
   - Layer 8 (GNN comparison) is now **complete** — see the 2026-07-17 changelog entry and D-030/D-031 for the full run and evidence trail.
 
 ### Owner action items — things Claude Code cannot do
-1. **Run the Cloud Run deploy** — blocked by Claude Code's own auto-mode safety classifier as an outward-facing, billed action, not by anything technical. Everything upstream (image slimmed, tests green, local image-parity check passed) is done:
-   ```bash
-   gcloud run deploy ellipticguard --project project-d2e31364-d592-4a21-801 \
-     --source . --region us-central1 --port 7860 \
-     --memory 512Mi --min-instances 0 --allow-unauthenticated
-   ```
-   Then verify: `curl <url>/health` and a real `/predict` payload; drop the URL into README's "Running the service" section in place of the current pending-deploy note.
-2. **Note the project fallback**: a fresh `ellipticguard` project was attempted for clean 3-month teardown, but billing account `017F45-068C75-263F05` refused the link — `Cloud billing quota exceeded` (3 projects already linked: `project-d2e31364-d592-4a21-801`, `docsgpt-agent`, `mini-raft-prod`). The empty project was deleted; deploy target is `project-d2e31364-d592-4a21-801` instead. If a cleaner teardown matters later, request a billing quota increase or free a project slot, then redeploy into a dedicated project — no code change needed.
-3. **Set a reminder** to `gcloud run services delete ellipticguard --project project-d2e31364-d592-4a21-801 --region us-central1` (and delete the pushed Artifact Registry image) once the trial credit or ~3-month window ends, so nothing bills afterward.
-4. Confirm the actual remaining trial credit and end date in the GCP billing console — the "$150 / 3 months" figures came from the owner's own report, not from reading the account directly.
+1. **DONE — live URL:** https://ellipticguard-507124978062.us-central1.run.app deployed 2026-07-31, verified serving identical predictions to every local check.
+2. **Set a reminder** to `gcloud run services delete ellipticguard --project project-d2e31364-d592-4a21-801 --region us-central1` (and delete the pushed Artifact Registry image) once the trial credit or ~3-month window ends, so nothing bills afterward.
+3. Confirm the actual remaining trial credit and end date in the GCP billing console — the "$150 / 3 months" figures came from the owner's own report, not from reading the account directly.
+4. **Note the project fallback**: a fresh `ellipticguard` project was attempted for clean 3-month teardown, but billing account `017F45-068C75-263F05` refused the link — `Cloud billing quota exceeded` (3 projects already linked: `project-d2e31364-d592-4a21-801`, `docsgpt-agent`, `mini-raft-prod`). The empty project was deleted; deploy target is `project-d2e31364-d592-4a21-801` instead (confirmed to be a personal, self-owned org — `vankadara-kausik-org`, created 2026-07-10 — not a third-party employer/school domain, so no external-control risk). If a cleaner teardown matters later, request a billing quota increase or free a project slot, then redeploy into a dedicated project — no code change needed.
 
 ---
 
@@ -61,7 +54,7 @@ Layer 8 is three separable pieces with different risk profiles, so it splits cle
 | 8 | GNN comparison (OPTIONAL) | **complete** | **yes** | retuned run (200/20 epoch budget, D-032): XGBoost champion F1=0.806 vs GCN 0.554±0.033, GraphSAGE 0.565±0.008, EvolveGCN 0.120±0.028 (unchanged by the retune) — all three lose to the champion, a legitimate result (D-030/D-031/D-032); T43 collapse reproduces in all three GNNs too |
 | 9 | Monitoring & observability | complete | yes | Evidently feature/target drift (`src/monitoring/drift.py`); target drift spikes at T43, feature drift flat; `/metrics` p50/p95 on API |
 | 10 | Retraining loop & CI/CD (replay) | complete | yes | replay driver + drift-or-performance flag; champion/challenger promotes routine steps, holds at T43; lean data-free GitHub Actions CI |
-| 11 | Deployment & docs | gate-partial (deploy command pending owner) | partial | container **verified serving** (real illicit 0.9946 / licit 0.0253, no registry inside, identical before/after slimming); image slimmed 919 MB → 300 MB (D-034); host decided — Google Cloud Run on trial credit; D-024 closed; README written; **live URL pending — `gcloud run deploy` left for the owner to run (auto-mode classifier blocks billed/public actions), see Owner action items** |
+| 11 | Deployment & docs | **complete** | **yes** | live at https://ellipticguard-507124978062.us-central1.run.app (deployed 2026-07-31, D-034); container **verified serving** (real illicit 0.9946 / licit 0.0253, identical across local pre/post-slim images and the live URL); image slimmed 919 MB → 300 MB; host: Google Cloud Run on trial credit, time-limited (~3 months); D-024 closed; README written |
 
 ---
 
@@ -89,7 +82,7 @@ Layer 8 is three separable pieces with different risk profiles, so it splits cle
 ## Changelog
 <!-- Newest on top. One block per session/gate. -->
 
-### 2026-07-31 — Layer 11: hosting venue decided (Cloud Run), serving image slimmed 919 MB → 300 MB, deploy command left for owner
+### 2026-07-31 — Layer 11 GATE MET: deployed live to Google Cloud Run, serving image slimmed 919 MB → 300 MB
 - **Context:** Owner has an existing GCP account with ~$150 trial credit and ~3 months left, and confirmed a time-limited demo is acceptable — reopening Cloud Run as a host (the card objection in D-029 no longer applies). Ran unattended overnight per owner instruction, with a plan reviewed and approved beforehand.
 - **What changed (code, all verified — see Gate evidence):**
   - `src/data/loaders.py` now defines `MODEL_FEATURE_COLS` (pandas-only); `src/models/baseline.py` re-exports it. `src/serving/app.py` imports it from `loaders`, not `baseline` — serving no longer depends on a training module.
@@ -106,9 +99,13 @@ Layer 8 is three separable pieces with different risk profiles, so it splits cle
   - First slim build attempt (before the `--no-deps` fix) came in at 587 MB content with `nvidia-nccl-cu12` accounting for 400 MB of installed packages, none of it reachable from the CPU serving path — fixed before this was reported as done.
   - First smoke-test attempt failed with `ImportError: sklearn needs to be installed` from inside `xgboost.XGBClassifier.__init__` itself (not from anything in this codebase) — the exported model is the sklearn-wrapper flavor (`MLmodel: xgboost.sklearn.XGBClassifier`), which imports sklearn even unfitted. Fixed by adding `scikit-learn` back to `requirements-serve.txt` (~17 MB); re-verified after the fix.
 - **Decisions logged:** D-034 (full reasoning, alternatives, and the deployment blocker — supersedes D-029's point 4, the deferred host choice).
-- **Deployment status — NOT gate-met yet:** a fresh `ellipticguard` project was created for clean teardown but couldn't be linked to billing (`Cloud billing quota exceeded` — 3 projects already on the account); deleted, and `project-d2e31364-d592-4a21-801` used instead, with Cloud Run/Cloud Build/Artifact Registry APIs enabled there. The actual `gcloud run deploy ... --allow-unauthenticated` command — a real-money, public-endpoint action — was blocked by Claude Code's own auto-mode safety classifier rather than run unattended. Everything upstream of that one command is done and verified; see Owner action items above for the exact command to run.
-- **Gate met?:** no — Layer 11 stays gate-partial until the owner runs the deploy command and the live URL is verified and recorded.
-- **Next action:** owner runs the `gcloud run deploy` command in Owner action items, verifies `/health` and `/predict` on the resulting URL, and drops the URL into README's "Running the service" section.
+- **Deployment status — GATE MET.** A fresh `ellipticguard` project was created for clean teardown but couldn't be linked to billing (`Cloud billing quota exceeded` — 3 projects already on the account); deleted, and `project-d2e31364-d592-4a21-801` used instead. Confirmed via `gcloud organizations describe` that its parent org (`vankadara-kausik-org`, ID 730289174085) is self-owned and recently auto-created (2026-07-10), not a third-party domain — no access-control risk from staying there. Checked the org policies that typically block a public Cloud Run demo (`iam.allowedPolicyMemberDomains`, `run.allowedIngress`, `gcp.resourceLocations`) — all `ALLOW`, none applicable.
+  - The `gcloud run deploy --allow-unauthenticated` command was initially blocked by Claude Code's own auto-mode safety classifier as an outward-facing billed action; the owner ran it directly.
+  - **First owner-run attempt failed:** `PERMISSION_DENIED` — the Compute Engine default service account (`507124978062-compute@developer.gserviceaccount.com`) lacked `storage.objects.get` on the auto-created `run-sources-*` GCS bucket. Root cause: the org has `constraints/iam.automaticIamGrantsForDefaultServiceAccounts` **enforced**, so default service accounts no longer get an automatic Editor role (a modern GCP security default, found during the org-policy investigation before this attempt, but its concrete failure mode wasn't certain until it actually happened). Fixed with a scoped grant: `roles/storage.objectViewer` on that one bucket, not project-wide Editor.
+  - **Second attempt failed differently:** the Docker build itself succeeded, but the image push to Artifact Registry failed — same root cause, different permission. The repo `cloud-run-source-deploy` had an empty IAM policy (no inherited Editor grant), so the build service account couldn't push. Fixed with `roles/artifactregistry.writer` scoped to that one repository. (A related `roles/logging.logWriter` project-level grant, needed only for build-log visibility and not for the build to succeed, was blocked by the same safety classifier and left ungranted — a cosmetic gap, not a functional one.)
+  - **Third attempt succeeded.** `Service [ellipticguard] revision [ellipticguard-00001-9hd] has been deployed and is serving 100 percent of traffic.` Live URL verified: `/health` returns `{"status":"ok","model_version":"2"}`; `/predict` on the same real illicit/licit fixture rows used throughout this session returns `0.9945693016052246` / `0.025330474600195885` — **bit-for-bit identical** to every local pre- and post-slimming check.
+- **Gate met?:** **yes** — a live Cloud Run URL serves real predictions, README reproduces the pipeline from a clean clone, decisions log complete (D-034).
+- **Next action:** none required. Owner should set a reminder to tear down the Cloud Run service (see Owner action items) before the trial credit or ~3-month window lapses.
 
 ### 2026-07-30 — Nice-to-have audit; NannyML re-evaluated and declined with a real reason (docs-only)
 - **What changed:** Owner asked how many of the 4 nice-to-haves (`PROJECT_PLAN.md:156` — Layer 8 GNN, NannyML CBPE, SHAP, Elliptic++) were built: 2 of 4 (GNN, SHAP). Owner then asked whether NannyML specifically was worth adding for resume value. Re-examined D-025's original deferral, which only said "skipped as nice-to-have" — not a defensible reason on its own.
