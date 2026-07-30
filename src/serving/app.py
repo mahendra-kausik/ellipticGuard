@@ -112,6 +112,16 @@ class PredictResponse(BaseModel):
 app = FastAPI(title="EllipticGuard")
 
 
+@app.get("/")
+def root():
+    return {
+        "service": "EllipticGuard",
+        "description": "AML illicit-transaction detector on the Elliptic Bitcoin dataset",
+        "endpoints": ["GET /health", "POST /predict", "GET /metrics"],
+        "docs": "/docs",
+    }
+
+
 @app.middleware("http")
 async def observe_requests(request: Request, call_next):
     start = time.perf_counter()
