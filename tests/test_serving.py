@@ -64,7 +64,7 @@ def test_serves_from_exported_weights_without_registry(monkeypatch):
     monkeypatch.setattr(app_module, "MODEL_URI", "api/model")
     monkeypatch.setenv("MODEL_VERSION", "2")
     monkeypatch.setattr(
-        app_module, "MlflowClient", lambda *a, **kw: pytest.fail("registry was queried")
+        app_module, "_load_from_registry", lambda: pytest.fail("registry was queried")
     )
     app_module.get_model.cache_clear()
     app_module.get_model_version.cache_clear()

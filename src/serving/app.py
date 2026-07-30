@@ -8,6 +8,11 @@ Serves the champion's raw probability: Layer 6 (D-023) found the registered v2 h
 no leakage-free holdout left to calibrate on, and is already near-calibrated
 (test Brier 0.0268 -> 0.0264 with sigmoid calibration on a different base model) —
 so a raw, honestly-labeled probability is the served score. See DECISIONS.md D-024.
+
+The deployed image installs `requirements-serve.txt`, not the full `requirements.txt` —
+mlflow (and everything it drags in: sqlalchemy, alembic, pyarrow, flask) is a training/
+tracking dependency the container never needs, since MODEL_URI is a local directory
+there. It's imported lazily, only on the local-dev registry path. See DECISIONS.md D-034.
 """
 import logging
 import os
@@ -16,14 +21,13 @@ from collections import deque
 from functools import lru_cache
 from pathlib import Path
 
-import mlflow
 import pandas as pd
+import xgboost
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
-from mlflow.tracking import MlflowClient
 from pydantic import BaseModel, field_validator
 
-from src.models.baseline import MODEL_FEATURE_COLS
+from src.data.loaders import MODEL_FEATURE_COLS
 
 logger = logging.getLogger("elliptic_guard.serving")
 
@@ -43,7 +47,6 @@ def _percentile(values: list[float], pct: float) -> float:
 REPO_ROOT = Path(__file__).resolve().parents[2]
 load_dotenv(REPO_ROOT / ".env")
 
-mlflow.set_tracking_uri(os.environ.get("MLFLOW_TRACKING_URI") or f"sqlite:///{REPO_ROOT / 'mlflow.db'}")
 REGISTRY_NAME = os.environ.get("MLFLOW_REGISTERED_MODEL_NAME", "elliptic-illicit")
 THRESHOLD = float(os.environ.get("PREDICT_THRESHOLD", 0.5))
 
@@ -53,9 +56,28 @@ THRESHOLD = float(os.environ.get("PREDICT_THRESHOLD", 0.5))
 MODEL_URI = os.environ.get("MODEL_URI") or f"models:/{REGISTRY_NAME}@production"
 
 
+def _load_from_registry():
+    """Only reached on the local-dev path (MODEL_URI is a registry URI, not a directory).
+    mlflow is imported here, not at module level, so the slim serving image — which never
+    installs it — can import this module at all. See DECISIONS.md D-034."""
+    import mlflow.xgboost
+    from mlflow.tracking import MlflowClient
+
+    mlflow.set_tracking_uri(
+        os.environ.get("MLFLOW_TRACKING_URI") or f"sqlite:///{REPO_ROOT / 'mlflow.db'}"
+    )
+    return mlflow.xgboost, MlflowClient
+
+
 @lru_cache(maxsize=1)
 def get_model():
-    return mlflow.xgboost.load_model(MODEL_URI)
+    path = Path(MODEL_URI)
+    if path.is_dir():  # exported weights (container) — no mlflow needed (D-034)
+        model = xgboost.XGBClassifier()
+        model.load_model(str(path / "model.ubj"))
+        return model
+    mlflow_xgboost, _ = _load_from_registry()
+    return mlflow_xgboost.load_model(MODEL_URI)
 
 
 @lru_cache(maxsize=1)
@@ -63,6 +85,7 @@ def get_model_version() -> str:
     pinned = os.environ.get("MODEL_VERSION")
     if pinned:
         return pinned
+    _, MlflowClient = _load_from_registry()
     return str(MlflowClient().get_model_version_by_alias(REGISTRY_NAME, "production").version)
 
 

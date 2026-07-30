@@ -9,6 +9,9 @@ import pandas as pd
 
 NUM_FEATURES = 165  # feat_0..feat_164; time_step is the paper's 166th ("first local") feature
 FEATURE_COLS = [f"feat_{i}" for i in range(NUM_FEATURES)]
+# Defined here (not in src/models/baseline.py) so the serving path can use it without
+# importing sklearn — src/models/baseline.py re-exports it for training-side callers (D-034).
+MODEL_FEATURE_COLS = ["time_step"] + FEATURE_COLS  # 166 features, per PROJECT_PLAN.md §2
 
 
 def load_features(path: Path) -> pd.DataFrame:

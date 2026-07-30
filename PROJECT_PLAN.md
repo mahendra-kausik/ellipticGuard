@@ -55,7 +55,11 @@ Treat these as *reference points to reproduce and cite honestly*, not numbers to
 - **Data/model versioning:** DVC + Google Drive remote.
 - **Experiment tracking + model registry:** MLflow (local backend; registry via API).
 - **Modeling:** scikit-learn (LR, RF), XGBoost; networkx (or igraph) for graph features.
-- **Serving:** FastAPI + Docker → Hugging Face Spaces (free CPU-basic).
+- **Serving:** FastAPI + Docker → Google Cloud Run (`us-central1`, scale-to-zero). Amended from
+  the original "Hugging Face Spaces (free CPU-basic)": HF stopped running Docker Spaces on its
+  free tier (D-029). Cloud Run runs on the owner's existing GCP trial credit, not a pure free
+  tier — a deliberate, time-limited deviation from this document's free-tier-only rule, recorded
+  in D-034.
 - **Monitoring:** Evidently (drift); NannyML CBPE (label-free perf estimation, optional).
 - **CI/CD + retraining:** GitHub Actions.
 - **Testing:** pytest.
@@ -136,8 +140,10 @@ Build: a replay driver that feeds time steps in sequence to simulate streaming; 
 **Gate:** CI runs green on a normal commit; the replay demonstrably fires the flag at/after T43; champion/challenger promotion logic is shown to promote in a routine case and reject/hold in the T43 case. All three behaviors captured in `SESSION_LOG.md`.
 
 ### Layer 11 — Deployment & documentation
-Build: deploy the container to Hugging Face Spaces (free); finalize `README.md` (architecture diagram, how to reproduce via `dvc repro`, results table, honest limitations); ensure `DECISIONS.md` is complete; write the resume-metrics section.
-**Gate:** a live Spaces URL serves predictions; README reproduces the pipeline from a clean clone (documented steps); decisions log complete.
+Build: deploy the container to Google Cloud Run (amended from Hugging Face Spaces — D-029/D-034);
+finalize `README.md` (architecture diagram, how to reproduce via `dvc repro`, results table,
+honest limitations); ensure `DECISIONS.md` is complete; write the resume-metrics section.
+**Gate:** a live Cloud Run URL serves predictions; README reproduces the pipeline from a clean clone (documented steps); decisions log complete.
 
 ---
 
@@ -147,11 +153,16 @@ Build: deploy the container to Hugging Face Spaces (free); finalize `README.md` 
 
 ## 8. Free-tier caveats (re-verify before relying on limits)
 - DVC-on-Google-Drive: ~15 GB on a personal account; API rate limits on large/many artifacts — keep artifact count modest.
-- Hugging Face Spaces free CPU-basic: ~16 GB RAM / 2 vCPU; sleeps after inactivity — fine for a demo.
+- ~~Hugging Face Spaces free CPU-basic~~ — no longer free for Docker Spaces as of Layer 11; see D-029.
+- Google Cloud Run always-free tier: 2M requests/mo, 180,000 vCPU-s/mo, 360,000 GiB-s/mo (select
+  US regions) — enough for an idle scale-to-zero demo at $0. **The EllipticGuard deployment does
+  not rely on this tier**: it runs under a billing-enabled project on trial credit, which is a
+  documented, time-limited exception (D-034), not a claim that Cloud Run itself is free-tier-only
+  here.
 - GitHub Actions: free minutes are ample for this CPU pipeline; keep the CI job lean.
 - MLflow registry stages work best against a backed tracking server; on a local file store, use the registry API and note in `DECISIONS.md` that a hosted tracking server is the production upgrade.
 
 ## 9. Must-have vs nice-to-have (if placement prep eats time)
 - **Must-have:** Layers 0–7, 9, 10 (the honest model + serving + monitoring + retraining loop).
-- **Nice-to-have:** Layer 8 (GNN), NannyML CBPE, SHAP, Elliptic++ actor-graph extension.
+- **Nice-to-have:** Layer 8 (GNN), NannyML CBPE, SHAP.
 - A clean classical model with honest temporal validation, a live deployment, and a working monitoring/retraining loop **beats** a half-finished GNN. Do not over-scope.

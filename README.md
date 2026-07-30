@@ -39,8 +39,8 @@ flowchart LR
     end
     X -->|register v2| REG[("MLflow registry<br/>elliptic-illicit@production")]
     REG -->|export_model.py| W["api/model/<br/>~1MB weights"]
-    W --> API["FastAPI container<br/>/predict /health /metrics"]
-    API --> HF["Hugging Face Spaces<br/>(CPU basic, free)"]
+    W --> API["FastAPI container<br/>~300MB, /predict /health /metrics"]
+    API --> CR["Google Cloud Run<br/>(trial credit, time-limited)"]
     R -.->|quality gate| CI["GitHub Actions"]
 ```
 
@@ -67,7 +67,7 @@ data/raw/elliptic_txs_edgelist.csv     # 234,355 x 2, has header
 ```bash
 dvc repro          # assemble -> split_eda -> train_baseline -> build_graph_features
                    # -> train_advanced -> evaluate_champion -> monitor_drift -> replay_retraining
-pytest             # 27 tests
+pytest             # 35 tests
 ```
 
 **Serve locally:**
@@ -78,7 +78,7 @@ uvicorn src.serving.app:app --reload
 curl localhost:8000/health
 ```
 
-**Build the container** (what Hugging Face Spaces runs — verified serving a real illicit row at p=0.9946 and a real licit row at p=0.0253, with no MLflow registry inside the container):
+**Build the container** (what the deployed Space/service runs — verified serving a real illicit row at p=0.9946 and a real licit row at p=0.0253, with no MLflow registry inside the container). The image installs `requirements-serve.txt`, not `requirements.txt` — mlflow, dvc, shap, matplotlib, and evidently are training/CI dependencies the serving path never imports (D-034), which cut the image from 919 MB to 300 MB content size:
 
 ```bash
 python pipelines/export_model.py             # alias -> api/model/ weights
@@ -122,15 +122,25 @@ What the monitoring found (Layer 9):
 
 That gap is the finding: **the failure was invisible in the feature distribution and only visible in the labels.** A production system relying on label-free feature drift monitoring would have missed it entirely — which is a real monitoring blind spot, not a footnote (D-025).
 
+This is also why the project deliberately does not use label-free performance estimation such as NannyML's CBPE: it infers performance from predicted probabilities assuming `P(y|X)` is stable, so it inherits the same blind spot and would have reported healthy performance straight through the collapse (D-033).
+
 What the retraining loop found (Layer 10): the replay's drift-or-performance flag fires from step 43 onward, and champion/challenger correctly **promotes** in routine steps (e.g. step 39: challenger F1 0.968 vs champion 0.884) but **holds** at steps 43 and 45, where a challenger trained on everything before the step still cannot beat the champion — both score near zero. Later challengers recover only partially (F1 0.19–0.90) and never approach the ~0.85 pre-collapse level.
 
 **Conclusion: T43 is a regime change, not a staleness problem.** More training data doesn't help when the thing you're detecting has changed shape. The correct response is escalation to a human analyst, and the loop is designed to hold rather than promote a model that merely looks new (D-023, D-026).
 
 ## Running the service
 
-**There is no live demo URL yet, and the reason is worth stating plainly:** this project targeted Hugging Face Spaces' free CPU tier, and HF has since moved Docker (and Gradio) Spaces behind a paid plan — only static Spaces remain free, and a static Space has no Python process to run FastAPI in. Rather than quietly swap in another host or drop the requirement, the deployment is postponed and the gate left open (D-029).
+**Hosting venue:** Google Cloud Run, not the originally planned Hugging Face Spaces — HF moved Docker (and Gradio) Spaces behind a paid plan, leaving only static Spaces free, which can't run a Python process (D-029). Cloud Run runs on the owner's existing GCP trial credit rather than a pure always-free tier, so once live this will be a **deliberately time-limited demo**, expected to stop working around the trial's ~3-month mark (D-034). `docker run -p 7860:7860 ellipticguard` is the permanent, always-reproducible path — the live URL is a convenience on top of it, not the source of truth.
 
-What *is* verified: the container serves correctly. Inside a Linux container with no MLflow registry present at all, a real illicit transaction from the test window scores **0.9946** and a real licit one **0.0253**. One command reproduces it from a clean clone:
+As of this commit the deploy command itself hasn't been run yet — it's an outward-facing, billed action, so it's left for the owner to execute deliberately rather than fired unattended:
+
+```bash
+gcloud run deploy ellipticguard --project project-d2e31364-d592-4a21-801 \
+  --source . --region us-central1 --port 7860 \
+  --memory 512Mi --min-instances 0 --allow-unauthenticated
+```
+
+What *is* verified locally: the container serves correctly, and does so identically before and after the image was slimmed from 919 MB to 300 MB — the same real illicit and licit fixture rows scored bit-for-bit identical probabilities on both images. Inside a Linux container with no MLflow registry present at all, a real illicit transaction from the test window scores **0.9946** and a real licit one **0.0253**. One command reproduces it from a clean clone:
 
 ```bash
 docker build -t ellipticguard . && docker run -p 7860:7860 ellipticguard
@@ -157,7 +167,7 @@ Stated plainly, because each one is a real gap:
 
 - **The deployed container loads weights from a path, not the registry.** Locally, the app resolves `models:/elliptic-illicit@production` — the registry is the source of truth. But `mlflow.db` bakes absolute Windows artifact paths into `model_versions.source`, so the container can't query it; `pipelines/export_model.py` resolves the alias at build time and ships the ~1 MB artifact instead. The alias still decides *what* ships, but the running Space resolves `/app/model`. A hosted MLflow tracking server is the real fix and would remove this entirely (D-028).
 - **`PREDICT_THRESHOLD` is 0.5, untuned.** A sensible default, not an operating point chosen from a precision/recall tradeoff.
-- **No live deployment yet.** HF Spaces' free tier dropped Docker support mid-build (only static Spaces are free now, and those can't run a server process). The container is verified serving; the host is undecided. Free options all carry a catch worth knowing: Render's free tier spins down after 15 min idle and caps at 512 MB RAM (which would mean loading `model.ubj` via `xgboost.Booster` instead of importing mlflow), while Fly.io and Cloud Run now require a card on file (D-029).
+- **No live URL as of this commit.** HF Spaces' free tier dropped Docker support mid-build (D-029). The chosen replacement is Google Cloud Run, on the owner's existing GCP trial credit — a deliberate, time-limited exception to this project's free-tier-only rule (D-034). The container is built, slimmed (919 MB → 300 MB), and verified serving identical predictions before and after slimming; the `gcloud run deploy` command itself is left for the owner to run by hand, since it's a real-money, publicly-reachable action. Once the trial credit or period lapses (~3 months out), the link is expected to stop working — `docker run` remains the permanent reproduction path.
 - **No GNN comparison.** Layer 8 (static GCN / EvolveGCN, reference figures ≈ 0.63 / 0.72) was scoped as nice-to-have and skipped in favor of finishing the serving, monitoring, and retraining layers. A clean classical model with honest validation and a live deployment beats a half-finished GNN.
 - **The 72 aggregated features are opaque.** They're anonymized by the dataset's publisher, so the SHAP ranking (`feat_52`, `feat_58`, `feat_89` lead) identifies *which* features matter but cannot say what they mean.
 - **Unknown-labeled nodes (157,205 of 203,769) are excluded** from supervised training and evaluation. They're kept in the assembled table for graph structure, but the operative class balance is ~9.8% illicit over the 46,564 labeled nodes (D-002, D-016).
@@ -172,6 +182,7 @@ Stated plainly, because each one is a real gap:
 **System / MLOps**
 - Inference latency: **p50 0.73 ms, p95 6.48 ms** (CPU, in-process; target was < 100 ms)
 - Model size: **1.1 MB** (target was < 50 MB)
+- Serving image size: **919 MB → 300 MB** (content size) by separating training/tracking dependencies from the inference path (D-034)
 - Reproducibility: `dvc repro` rebuilds the full pipeline from raw CSVs in one command
 - Retraining cadence: per replayed time step, gated on a drift-or-performance flag
 - Drift detection: target drift spikes at the exact step of the F1 collapse (T43)

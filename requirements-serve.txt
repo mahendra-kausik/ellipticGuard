@@ -1,0 +1,26 @@
+# requirements-serve.txt — EllipticGuard serving image ONLY (D-034).
+# The full requirements.txt (dvc, mlflow, shap, matplotlib, evidently, pytest, ...) is the
+# dev/training/CI environment. /predict needs none of it: get_model() loads model.ubj via
+# xgboost.XGBClassifier directly from MODEL_URI, which is a plain directory in the deployed
+# container. mlflow stays importable for local dev (src/serving/app.py imports it lazily,
+# only when MODEL_URI is a registry URI) but is intentionally absent here.
+#
+# Keep version floors in sync with requirements.txt for the packages both files list.
+
+python-dotenv>=1.0.0
+
+numpy>=1.26.0,<3.0.0
+pandas>=2.1.0
+scipy>=1.11.0                 # xgboost's sklearn wrapper imports this at load time
+scikit-learn>=1.4.0           # required by xgboost.XGBClassifier itself (raises ImportError
+                               # without it, even unfitted) — the exported model.ubj was saved
+                               # via the sklearn API (MLmodel: xgboost.sklearn.XGBClassifier),
+                               # not the low-level Booster, so this isn't avoidable here.
+
+fastapi>=0.111.0
+uvicorn[standard]>=0.29.0
+pydantic>=2.0.0
+
+# xgboost is intentionally NOT listed here — its PyPI wheel declares a hard (non-optional)
+# dependency on nvidia-nccl-cu12, a ~400 MB GPU-only library this CPU serving image never
+# touches. The Dockerfile installs it separately with --no-deps to skip that pull.

@@ -19,9 +19,7 @@ from sklearn.metrics import (
 )
 from sklearn.preprocessing import StandardScaler
 
-from src.data.loaders import FEATURE_COLS
-
-MODEL_FEATURE_COLS = ["time_step"] + FEATURE_COLS  # 166 features, per PROJECT_PLAN.md §2
+from src.data.loaders import FEATURE_COLS, MODEL_FEATURE_COLS  # re-exported, see loaders.py
 
 
 def build_xy(nodes_df: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series]:

@@ -1,0 +1,21 @@
+# The Dockerfile's COPY lines are selective, but `docker build .` and
+# `gcloud run deploy --source .` both upload the whole directory as build context BEFORE
+# any COPY runs. Without this file that upload includes .env — see DECISIONS.md D-034.
+.env
+.env.*
+!.env.example
+
+.git/
+.venv/
+__pycache__/
+*.pyc
+
+data/
+mlruns/
+mlflow.db
+metrics/
+notebooks/
+tests/
+
+# Present at repo root only for local reference; not part of the serving image.
+*.md

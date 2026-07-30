@@ -5,10 +5,10 @@ Single source of truth for "where are we?" Update at the end of every session an
 ---
 
 ## Current state
-- **Active layer:** none — Layer 8 (OPTIONAL, GNN comparison) is **COMPLETE**, gate met. The only open item in the whole project is Layer 11's hosting-venue choice (D-029), which is not engineering work.
-- **Also open:** Layer 11 — Deployment & docs (**GATE-PARTIAL, live-hosting POSTPONED by owner decision**, D-029 — everything except the hosting venue is done and verified; not blocking anything else)
+- **Active layer:** none — Layer 8 (OPTIONAL, GNN comparison) is **COMPLETE**, gate met.
+- **Also open:** Layer 11 — Deployment & docs (**GATE-PARTIAL**, D-034 — hosting venue decided (Cloud Run), image slimmed and verified (919 MB → 300 MB), everything upstream of the live URL is done; the `gcloud run deploy` command itself is the one remaining step, deliberately left for the owner to run — see Owner action items below)
 - **Last gate passed:** Layer 8 (OPTIONAL) — GNN comparison. Real, honestly-reported same-split table: XGBoost champion 0.806 vs GCN 0.450±0.015 / GraphSAGE 0.496±0.040 / EvolveGCN 0.120±0.028. See D-030/D-031 and the 2026-07-17 changelog entry below for the full evidence trail (unit-tested tensor math, a diagnostic ruling out undertraining, T43 collapse reproduced in all three GNNs).
-- **Next action:** none required — all must-have layers (1–7, 9–10) and the optional Layer 8 are complete. If resumed, the only remaining choice is Layer 11's hosting venue (owner decision, not blocked on engineering).
+- **Next action:** owner runs the `gcloud run deploy` command below, then this session's changelog entry can be closed out with the live URL.
 
 ### Layer 8 subpart split (recorded per CLAUDE.md's "split a too-big layer into logical subparts" rule)
 
@@ -34,7 +34,16 @@ Layer 8 is three separable pieces with different risk profiles, so it splits cle
   - Layer 8 (GNN comparison) is now **complete** — see the 2026-07-17 changelog entry and D-030/D-031 for the full run and evidence trail.
 
 ### Owner action items — things Claude Code cannot do
-_(none — live hosting is postponed by owner decision, D-029. When it resumes, the owner picks a host: Render free tier (needs a Render account; likely needs the mlflow-free serving path for its 512 MB limit), another free host, or HF PRO. The `Herman3005/EllipticGuard` static Space that was created is unusable for serving and can be deleted or left idle; it costs nothing.)_
+1. **Run the Cloud Run deploy** — blocked by Claude Code's own auto-mode safety classifier as an outward-facing, billed action, not by anything technical. Everything upstream (image slimmed, tests green, local image-parity check passed) is done:
+   ```bash
+   gcloud run deploy ellipticguard --project project-d2e31364-d592-4a21-801 \
+     --source . --region us-central1 --port 7860 \
+     --memory 512Mi --min-instances 0 --allow-unauthenticated
+   ```
+   Then verify: `curl <url>/health` and a real `/predict` payload; drop the URL into README's "Running the service" section in place of the current pending-deploy note.
+2. **Note the project fallback**: a fresh `ellipticguard` project was attempted for clean 3-month teardown, but billing account `017F45-068C75-263F05` refused the link — `Cloud billing quota exceeded` (3 projects already linked: `project-d2e31364-d592-4a21-801`, `docsgpt-agent`, `mini-raft-prod`). The empty project was deleted; deploy target is `project-d2e31364-d592-4a21-801` instead. If a cleaner teardown matters later, request a billing quota increase or free a project slot, then redeploy into a dedicated project — no code change needed.
+3. **Set a reminder** to `gcloud run services delete ellipticguard --project project-d2e31364-d592-4a21-801 --region us-central1` (and delete the pushed Artifact Registry image) once the trial credit or ~3-month window ends, so nothing bills afterward.
+4. Confirm the actual remaining trial credit and end date in the GCP billing console — the "$150 / 3 months" figures came from the owner's own report, not from reading the account directly.
 
 ---
 
@@ -52,7 +61,7 @@ _(none — live hosting is postponed by owner decision, D-029. When it resumes, 
 | 8 | GNN comparison (OPTIONAL) | **complete** | **yes** | retuned run (200/20 epoch budget, D-032): XGBoost champion F1=0.806 vs GCN 0.554±0.033, GraphSAGE 0.565±0.008, EvolveGCN 0.120±0.028 (unchanged by the retune) — all three lose to the champion, a legitimate result (D-030/D-031/D-032); T43 collapse reproduces in all three GNNs too |
 | 9 | Monitoring & observability | complete | yes | Evidently feature/target drift (`src/monitoring/drift.py`); target drift spikes at T43, feature drift flat; `/metrics` p50/p95 on API |
 | 10 | Retraining loop & CI/CD (replay) | complete | yes | replay driver + drift-or-performance flag; champion/challenger promotes routine steps, holds at T43; lean data-free GitHub Actions CI |
-| 11 | Deployment & docs | gate-partial (hosting postponed) | partial | container **verified serving** (real illicit 0.9946 / licit 0.0253, no registry inside); D-024 closed; README written; **live URL blocked — HF free tier dropped Docker (D-029), host TBD** |
+| 11 | Deployment & docs | gate-partial (deploy command pending owner) | partial | container **verified serving** (real illicit 0.9946 / licit 0.0253, no registry inside, identical before/after slimming); image slimmed 919 MB → 300 MB (D-034); host decided — Google Cloud Run on trial credit; D-024 closed; README written; **live URL pending — `gcloud run deploy` left for the owner to run (auto-mode classifier blocks billed/public actions), see Owner action items** |
 
 ---
 
@@ -79,6 +88,35 @@ _(none — live hosting is postponed by owner decision, D-029. When it resumes, 
 
 ## Changelog
 <!-- Newest on top. One block per session/gate. -->
+
+### 2026-07-31 — Layer 11: hosting venue decided (Cloud Run), serving image slimmed 919 MB → 300 MB, deploy command left for owner
+- **Context:** Owner has an existing GCP account with ~$150 trial credit and ~3 months left, and confirmed a time-limited demo is acceptable — reopening Cloud Run as a host (the card objection in D-029 no longer applies). Ran unattended overnight per owner instruction, with a plan reviewed and approved beforehand.
+- **What changed (code, all verified — see Gate evidence):**
+  - `src/data/loaders.py` now defines `MODEL_FEATURE_COLS` (pandas-only); `src/models/baseline.py` re-exports it. `src/serving/app.py` imports it from `loaders`, not `baseline` — serving no longer depends on a training module.
+  - `src/serving/app.py`: `mlflow`/`MlflowClient` imports moved into a new `_load_from_registry()` helper, reached only when `MODEL_URI` is a registry URI rather than a directory. The container path now loads `model.ubj` directly via `xgboost.XGBClassifier().load_model()`.
+  - New `requirements-serve.txt` (fastapi/uvicorn/pydantic/pandas/numpy/scipy/scikit-learn/python-dotenv) replaces `requirements.txt` in the Dockerfile's install step.
+  - Dockerfile: installs `requirements-serve.txt`, then `xgboost` separately with `--no-deps` — its PyPI wheel hard-requires `nvidia-nccl-cu12` (~400 MB, GPU-only) even for CPU use, discovered by measuring the first slim build's installed packages (`du -sh site-packages/*` inside the container) rather than trusting the pre-build size estimate. `CMD` switched to shell form so Cloud Run's injected `$PORT` is honored, falling back to 7860 for local `docker run`.
+  - New `.dockerignore` (previously absent) — `gcloud run deploy --source .`/`docker build` upload the whole working directory as build context before any `COPY` runs, which would otherwise have included `.env` and `mlruns/`.
+  - New `tests/test_serving_loader.py` (data-free, runs in CI): asserts the direct-xgboost and mlflow loader paths produce identical `predict_proba` on a synthetic vector, using the committed `api/model/` weights.
+  - `tests/test_serving.py::test_serves_from_exported_weights_without_registry` updated: monkeypatches the new `_load_from_registry` instead of the now-removed module-level `MlflowClient`.
+- **Gate evidence:**
+  - `pytest -q`: **35 passed** (34 prior + the new loader test). `pytest -m "not needs_data" -q`: **27 passed, 8 deselected** (CI subset).
+  - Docker image content size: **919 MB → 300 MB** (disk usage 3.43 GB → 1.1 GB), measured via `docker images`.
+  - Built both the pre-slimming (919 MB) and post-slimming (300 MB) images, ran both containers side by side, posted the same real illicit/licit fixture rows from `data/processed/nodes.parquet` to each `/predict`: **`0.9945693016052246` and `0.025330474600195885` — bit-for-bit identical between images.**
+  - First slim build attempt (before the `--no-deps` fix) came in at 587 MB content with `nvidia-nccl-cu12` accounting for 400 MB of installed packages, none of it reachable from the CPU serving path — fixed before this was reported as done.
+  - First smoke-test attempt failed with `ImportError: sklearn needs to be installed` from inside `xgboost.XGBClassifier.__init__` itself (not from anything in this codebase) — the exported model is the sklearn-wrapper flavor (`MLmodel: xgboost.sklearn.XGBClassifier`), which imports sklearn even unfitted. Fixed by adding `scikit-learn` back to `requirements-serve.txt` (~17 MB); re-verified after the fix.
+- **Decisions logged:** D-034 (full reasoning, alternatives, and the deployment blocker — supersedes D-029's point 4, the deferred host choice).
+- **Deployment status — NOT gate-met yet:** a fresh `ellipticguard` project was created for clean teardown but couldn't be linked to billing (`Cloud billing quota exceeded` — 3 projects already on the account); deleted, and `project-d2e31364-d592-4a21-801` used instead, with Cloud Run/Cloud Build/Artifact Registry APIs enabled there. The actual `gcloud run deploy ... --allow-unauthenticated` command — a real-money, public-endpoint action — was blocked by Claude Code's own auto-mode safety classifier rather than run unattended. Everything upstream of that one command is done and verified; see Owner action items above for the exact command to run.
+- **Gate met?:** no — Layer 11 stays gate-partial until the owner runs the deploy command and the live URL is verified and recorded.
+- **Next action:** owner runs the `gcloud run deploy` command in Owner action items, verifies `/health` and `/predict` on the resulting URL, and drops the URL into README's "Running the service" section.
+
+### 2026-07-30 — Nice-to-have audit; NannyML re-evaluated and declined with a real reason (docs-only)
+- **What changed:** Owner asked how many of the 4 nice-to-haves (`PROJECT_PLAN.md:156` — Layer 8 GNN, NannyML CBPE, SHAP, Elliptic++) were built: 2 of 4 (GNN, SHAP). Owner then asked whether NannyML specifically was worth adding for resume value. Re-examined D-025's original deferral, which only said "skipped as nice-to-have" — not a defensible reason on its own.
+- **Finding:** CBPE assumes no concept drift (built for covariate shift, `P(X)` moves while `P(y|X)` holds). Layer 9's own numbers are the opposite regime: feature drift flat (0.583 pre-T43 vs 0.605 post-T43), target drift spikes (0.052 vs 0.117). That's concept drift by definition — CBPE would have reported healthy performance straight through the T43 collapse. Decision: still don't implement it, but now for a stated technical reason instead of a scheduling one.
+- **Docs updated:** `DECISIONS.md` D-033 (full reasoning, alternatives, tradeoffs — does not supersede D-025, only sharpens its NannyML clause). `README.md`'s T43 section gets a two-sentence addition pointing at D-033, right after the existing feature/target drift blind-spot paragraph.
+- **No code changed:** no new dependency, no pipeline stage, no tests — this was a documentation-only decision audit.
+- **Gate status:** n/a — no layer reopened.
+- **Next action:** unchanged — Layer 11's hosting-venue choice (D-029) remains the only open item.
 
 ### 2026-07-17 — Layer 8 retune (owner-requested, post-gate)
 - **What changed:** Owner asked whether the GNN F1/AUC-PR numbers could be improved. `params.yaml` `gnn.max_epochs`/`gnn.patience` raised 60/8 → 200/20 (matching the notebooks' own budget), identical across all three models — the equal-budget fairness property from D-030 is preserved. Re-ran the full `pipelines/train_gnn.py` pipeline.
