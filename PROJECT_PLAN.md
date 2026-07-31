@@ -153,7 +153,6 @@ honest limitations); ensure `DECISIONS.md` is complete; write the resume-metrics
 
 ## 8. Free-tier caveats (re-verify before relying on limits)
 - DVC-on-Google-Drive: ~15 GB on a personal account; API rate limits on large/many artifacts — keep artifact count modest.
-- ~~Hugging Face Spaces free CPU-basic~~ — no longer free for Docker Spaces as of Layer 11; see D-029.
 - Google Cloud Run always-free tier: 2M requests/mo, 180,000 vCPU-s/mo, 360,000 GiB-s/mo (select
   US regions) — enough for an idle scale-to-zero demo at $0. **The EllipticGuard deployment does
   not rely on this tier**: it runs under a billing-enabled project on trial credit, which is a
@@ -161,8 +160,3 @@ honest limitations); ensure `DECISIONS.md` is complete; write the resume-metrics
   here.
 - GitHub Actions: free minutes are ample for this CPU pipeline; keep the CI job lean.
 - MLflow registry stages work best against a backed tracking server; on a local file store, use the registry API and note in `DECISIONS.md` that a hosted tracking server is the production upgrade.
-
-## 9. Must-have vs nice-to-have (if placement prep eats time)
-- **Must-have:** Layers 0–7, 9, 10 (the honest model + serving + monitoring + retraining loop).
-- **Nice-to-have:** Layer 8 (GNN), NannyML CBPE, SHAP.
-- A clean classical model with honest temporal validation, a live deployment, and a working monitoring/retraining loop **beats** a half-finished GNN. Do not over-scope.

@@ -1,13 +1,3 @@
----
-title: EllipticGuard
-emoji: 🛡️
-colorFrom: indigo
-colorTo: gray
-sdk: docker
-app_port: 7860
-pinned: false
----
-
 # EllipticGuard
 
 An anti-money-laundering (AML) illicit-transaction detector on the [Elliptic Bitcoin dataset](https://www.kaggle.com/datasets/ellipticco/elliptic-data-set), built as a deployable, monitored, reproducible ML system rather than a notebook.
