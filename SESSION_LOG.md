@@ -9,6 +9,11 @@ Single source of truth for "where are we?" Update at the end of every session an
 - **Last gate passed:** Layer 11 — Deployment & docs. Live URL https://ellipticguard-507124978062.us-central1.run.app serves `/predict` and `/health`, verified returning bit-for-bit identical probabilities to every local check (D-034).
 - **Next action:** none required. Owner should set a reminder to tear down the Cloud Run service before the GCP trial credit/period lapses (~3 months from 2026-07-31) — see Owner action items below.
 
+### 2026-08-06 — docs (no layer, all gates already met)
+- **What changed:** Added `CODE_TOUR.md` — a flow-by-flow reading index (not a walkthrough) covering all 8 layers' code paths as 8 named flows (+1 optional GNN flow), each listing entrypoint→modules→outputs, relevant `DECISIONS.md` IDs, guarding tests, and the interview-shaped questions it answers. Purpose: owner opens a session, names a flow, and Claude traces the real code live against this index instead of re-deriving "what exists and where" each time. All referenced file paths, D-IDs, DVC stage names, and test files verified to exist.
+- Refreshed `EllipticGuard-ProjectInfo.md` (resume fact pack), stale since 2026-07-17: corrected the test count (27→35, 27 data-free), added the D-034 image slim (919 MB→300 MB) and live Cloud Run deployment, added a D-033 (NannyML CBPE decline) talking point, removed the now-wrong "no live URL" framing and reframed it as "live but time-limited by design" throughout (header instructions, limitations, LaTeX variants), and swapped the stale Hugging Face serving target for Cloud Run in the tech stack.
+- **Next action:** none — both are reference docs, used on demand.
+
 ### Layer 8 subpart split (recorded per CLAUDE.md's "split a too-big layer into logical subparts" rule)
 
 Layer 8 is three separable pieces with different risk profiles, so it splits cleanly. The full-layer gate applies at the end of 8c only.

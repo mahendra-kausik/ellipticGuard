@@ -4,7 +4,7 @@
 > - Match the JD's keywords/skills against the **Framing angles by role** and **Skills demonstrated** sections; lead with the facts that fit.
 > - Every number here is a real measured value. **Use them verbatim — never round, invent, or inflate.** If a stat isn't here, don't claim it.
 > - Prefer quantified bullets (metric + what you did + why it matters).
-> - Respect the honesty stance: retraining is a **replayed/simulated** stream over fixed historical data, not a live feed. Don't imply a live production system or a live URL.
+> - Respect the honesty stance: retraining is a **replayed/simulated** stream over fixed historical data, not a live feed — don't imply a live production system. A live Cloud Run URL does exist (deployed 2026-07-31) and may be cited, but it runs on trial credit and is expected to lapse ~3 months out — never imply it's permanent, and don't build a bullet that depends on it being reachable later.
 > - 3–5 bullets is usually right for one project on a resume; pick the strongest for the role, don't dump everything.
 
 ---
@@ -24,6 +24,7 @@ Classical ML on a 200K-node Bitcoin transaction graph, classifying illicit vs. l
 - **Retraining that knows when to give up.** The replay loop promotes challengers in routine steps but *holds* at T43/T45, where a model trained on all prior data still can't beat the champion (both near zero). Conclusion: regime change ≠ staleness; more data doesn't help, so escalate to a human.
 - **Reported results honestly, including a negative one.** Seven engineered graph-topology features produced only a marginal AUC-PR edge and slightly *lower* F1 than the provided features alone — likely because the dataset's 72 aggregated features already encode one-hop neighborhood info. The provided-only model won and was shipped as champion. This is reported as-is, not buried.
 - **Classical beats GNNs, fairly.** GCN/GraphSAGE/EvolveGCN re-implemented from scratch in plain PyTorch, trained under the *exact same* split/features/preprocessor/metric — all lose to the XGBoost champion, consistent with the Weber et al. 2019 reference.
+- **Knowing when *not* to add a tool.** NannyML's CBPE — the best-known label-free performance-estimation library — was evaluated and deliberately declined: it assumes no concept drift, which is exactly what T43 is. It would have inferred healthy performance from stable input distributions straight through the F1 collapse, silently. Label-aware monitoring (Evidently target drift) was kept instead.
 
 ---
 
@@ -52,11 +53,13 @@ Classical ML on a 200K-node Bitcoin transaction graph, classifying illicit vs. l
 **System / MLOps:**
 - Inference latency: **p50 0.73 ms, p95 6.48 ms** (CPU, in-process; target was < 100 ms)
 - Model size: **1.1 MB** (target was < 50 MB)
+- Serving image: **919 MB → 300 MB** content size (disk 3.43 GB → 1.1 GB) — split training/CI deps (`requirements.txt`) from a lean `requirements-serve.txt`, moved a shared column-list constant out of the sklearn-importing training module so the serving app no longer imports it, and installed `xgboost --no-deps` to drop a ~400 MB GPU-only dependency (`nvidia-nccl-cu12`) it never needed for CPU serving — found by measuring the built image, not estimating
+- **Live deployment:** Google Cloud Run (scale-to-zero, `us-central1`), verified serving a real illicit transaction at **p=0.9946** and a real licit one at **p=0.0253** — bit-for-bit identical to local, pre-slimming, and post-slimming container runs
 - Container-verified serving: real illicit tx scores 0.9946, real licit tx scores 0.0253 (inside Linux container, no MLflow registry present)
 - `dvc repro` rebuilds the full 8-stage pipeline from raw CSVs in one command
 - Retraining cadence: per replayed time step, gated on a drift-or-performance flag
 - CI: GitHub Actions, data-free (`pytest -m "not needs_data"` + F1 ≥ 0.6 quality gate that fails CI on regression)
-- Tests: **27 passing**, including leakage guards on the temporal split and every fitted transform
+- Tests: **35 passing** (27 in the data-free CI subset), including leakage guards on the temporal split and every fitted transform
 
 ---
 
@@ -65,8 +68,9 @@ Classical ML on a 200K-node Bitcoin transaction graph, classifying illicit vs. l
 - **Modeling:** scikit-learn (Logistic Regression, Random Forest), XGBoost, networkx (graph features), SHAP
 - **Data/model versioning:** DVC + Google Drive remote
 - **Experiment tracking + model registry:** MLflow (local backend, registry via API; champion tagged `elliptic-illicit@production`)
-- **Serving:** FastAPI + Uvicorn, Docker (`/predict`, `/health`, `/metrics` endpoints), targeted at Hugging Face Spaces (free CPU)
-- **Monitoring:** Evidently (feature + target drift)
+- **Serving:** FastAPI + Uvicorn, Docker (`/predict`, `/health`, `/metrics` endpoints) — a slimmed 300 MB serving image (dropped training/CI-only deps)
+- **Deployment:** Google Cloud Run (scale-to-zero) + Artifact Registry + Cloud Build; live and verified, time-limited by design (runs on trial credit)
+- **Monitoring:** Evidently (feature + target drift); NannyML CBPE evaluated and deliberately declined (assumes no concept drift — T43 is exactly that)
 - **CI/CD + retraining:** GitHub Actions (champion/challenger replay, quality gate)
 - **Optional GNN:** plain PyTorch (CPU, in-repo — no PyTorch Geometric)
 - **Testing:** pytest
@@ -91,6 +95,9 @@ Classical ML on a 200K-node Bitcoin transaction graph, classifying illicit vs. l
 - Replay retraining loop gated on a drift-or-performance flag
 - CI quality gate (F1 ≥ 0.6, fails on regression)
 - Containerized serving, latency (sub-ms p50) and model-size budgets met
+- Serving image optimization: 919 MB → 300 MB by separating training/CI dependencies from the inference path and fixing an app-imports-training-module layering violation
+- Live cloud deployment (Google Cloud Run, scale-to-zero) with bit-for-bit verified parity against every local check
+- Knowing when to decline a tool: NannyML CBPE evaluated and rejected on a documented technical mismatch (D-033), not skipped for time
 
 **Data Engineer** — lead with the pipeline and data integrity:
 - 8-stage DVC DAG, deterministic one-command rebuild from raw CSVs
@@ -100,22 +107,24 @@ Classical ML on a 200K-node Bitcoin transaction graph, classifying illicit vs. l
 
 **Backend / Software Engineer** — lead with the service:
 - FastAPI microservice: `POST /predict`, `GET /health`, `GET /metrics` (request count, p50/p95 latency)
-- Dockerized, verified serving end-to-end in a clean Linux container
+- Dockerized, verified serving end-to-end in a clean Linux container; deployed live to Google Cloud Run
 - Sub-millisecond p50 inference latency
-- 27 automated tests, GitHub Actions CI
+- Serving image slimmed 919 MB → 300 MB by profiling the built image and cutting an unneeded ~400 MB GPU dependency and unused training/CI packages
+- 35 automated tests (27 in CI), GitHub Actions CI
 - Clean `src/` layout, pure/testable functions
 
 ---
 
 ## Skills demonstrated (mineable list)
-Temporal validation · data-leakage prevention · imbalanced classification · gradient boosting (XGBoost) · graph feature engineering · concept-drift detection & response · probability calibration · model explainability (SHAP) · MLflow model registry · DVC data/model versioning · pipeline reproducibility (DVC DAG) · drift monitoring (Evidently) · champion/challenger retraining · CI/CD quality gates (GitHub Actions) · FastAPI service design · Docker containerization · latency/size budgeting · GNN implementation (GCN/GraphSAGE/EvolveGCN in PyTorch) · honest experimental reporting.
+Temporal validation · data-leakage prevention · imbalanced classification · gradient boosting (XGBoost) · graph feature engineering · concept-drift detection & response · probability calibration · model explainability (SHAP) · MLflow model registry · DVC data/model versioning · pipeline reproducibility (DVC DAG) · drift monitoring (Evidently) · champion/challenger retraining · CI/CD quality gates (GitHub Actions) · FastAPI service design · Docker containerization · latency/size budgeting · cloud deployment (Google Cloud Run) · container image optimization · dependency/build-time layering · GNN implementation (GCN/GraphSAGE/EvolveGCN in PyTorch) · honest experimental reporting.
 
 ---
 
 ## Honest limitations (frame within these — they're also strong "I know the tradeoffs" talking points)
-- **No live deployment URL yet.** Targeted Hugging Face Spaces' free CPU tier, which dropped Docker/Gradio Spaces behind a paid plan mid-build (only static Spaces stay free, and those can't run a server). Deployment postponed rather than quietly swapping hosts. The container *is* verified serving correctly.
+- **Live URL is time-limited by design.** Originally targeted Hugging Face Spaces' free CPU tier, which dropped Docker/Gradio Spaces behind a paid plan mid-build (only static Spaces stay free, and those can't run a server) — flagged rather than quietly swapped. Now live on Google Cloud Run, but running on the owner's existing GCP trial credit rather than a pure always-free tier, so it's a deliberate, time-limited demo expected to stop working ~3 months from 2026-07-31. `docker run` is the permanent, always-reproducible path; the live URL is a convenience on top of it, not the source of truth.
 - **Replayed, not live.** The 49 time steps are fixed historical data; "streaming" and "retraining" are an explicit replay/simulation.
 - **The deployed container loads weights from a path, not the registry.** `mlflow.db` bakes absolute Windows artifact paths, so an export step ships the ~1 MB artifact into the image; the registry alias still decides *what* ships. A hosted MLflow tracking server is the real fix.
+- **No label-free performance estimation.** NannyML CBPE was evaluated and deliberately not added (D-033) — it assumes no concept drift, exactly what T43 violates. The honest cost: if production labels arrived late or never (a real AML scenario), there's currently no fallback signal beyond label-aware monitoring, which needs labels to work at all.
 - **`PREDICT_THRESHOLD` = 0.5, untuned** — a sensible default, not a chosen precision/recall operating point.
 - **The 72 aggregated features are opaque** (anonymized by the dataset publisher), so SHAP names *which* features matter, not what they mean.
 - **Unknown-labeled nodes (157,205 of 203,769) are excluded** from supervised train/eval; kept only for graph structure.
@@ -132,11 +141,13 @@ Two ready-to-paste `\resumeProjectHeading` blocks (same macros/format as the Rid
 \resumeProjectHeading
           {\href{https://github.com/mahendra-kausik/ellipticGuard}{\textbf{\large{\underline{EllipticGuard: AML Transaction Detector}}} \href{https://github.com/mahendra-kausik/EllipticGuard}{\raisebox{-0.1\height}\faExternalLink }} $|$ \large{\underline{Python, FastAPI, Docker, XGBoost, MLflow, DVC}}}{}
           \resumeItemListStart
-            \resumeItem{\normalsize{Built and containerized a FastAPI microservice (\texttt{/predict}, \texttt{/health}, \texttt{/metrics}) serving illicit-transaction predictions at \textbf{0.73 ms p50 / 6.48 ms p95} latency on a 1.1 MB model; verified end-to-end in a clean Linux Docker container.}}
+            \resumeItem{\normalsize{Built and containerized a FastAPI microservice (\texttt{/predict}, \texttt{/health}, \texttt{/metrics}) serving illicit-transaction predictions at \textbf{0.73 ms p50 / 6.48 ms p95} latency on a 1.1 MB model; deployed live to Google Cloud Run, verified end-to-end in a clean Linux Docker container.}}
+
+            \resumeItem{\normalsize{Cut the serving image \textbf{919 MB $\rightarrow$ 300 MB} by profiling the built image, separating training/CI dependencies from the inference path, and removing an unneeded \textasciitilde400 MB GPU-only package.}}
 
             \resumeItem{\normalsize{Engineered a reproducible 8-stage DVC pipeline rebuilding the full system from raw CSVs (203K nodes / 234K edges) in one command, with a MLflow model registry and champion/challenger versioning.}}
 
-            \resumeItem{\normalsize{Set up GitHub Actions CI with 27 automated tests and an F1 quality gate that fails builds on model regression; added leakage guards on the temporal data split and every fitted transform.}}
+            \resumeItem{\normalsize{Set up GitHub Actions CI with 35 automated tests (27 data-free) and an F1 quality gate that fails builds on model regression; added leakage guards on the temporal data split and every fitted transform.}}
           \resumeItemListEnd 
           \vspace{-13pt}
 ```
@@ -149,7 +160,7 @@ Two ready-to-paste `\resumeProjectHeading` blocks (same macros/format as the Rid
           \resumeItemListStart
             \resumeItem{\normalsize{Trained an XGBoost illicit-Bitcoin-transaction classifier reaching \textbf{0.806 illicit-class F1} (0.800 AUC-PR) on a strict temporal split of the Elliptic graph (\textasciitilde9.8\% positive), beating RF, LR, and from-scratch GCN/GraphSAGE/EvolveGCN baselines.}}
 
-            \resumeItem{\normalsize{Diagnosed a concept-drift event (F1 collapse 0.855\,$\rightarrow$\,0.028) detectable only via \textbf{target drift}, not feature drift; built Evidently monitoring and a champion/challenger retraining loop that correctly holds rather than promotes on regime change.}}
+            \resumeItem{\normalsize{Diagnosed a concept-drift event (F1 collapse 0.855\,$\rightarrow$\,0.028) detectable only via \textbf{target drift}, not feature drift; built Evidently monitoring and a champion/challenger retraining loop that correctly holds rather than promotes on regime change; evaluated and declined NannyML CBPE after showing its no-drift assumption would have missed the same collapse.}}
 
             \resumeItem{\normalsize{Prevented data leakage with a causal temporal split (train/val/test by time step) and train-only transform fitting; added probability calibration (Brier 0.0268\,$\rightarrow$\,0.0264) and SHAP feature attribution.}}
           \resumeItemListEnd 
