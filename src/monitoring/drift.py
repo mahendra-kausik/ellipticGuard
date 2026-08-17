@@ -1,7 +1,7 @@
-"""Feature/target drift monitoring (Layer 9).
+"""Feature/target drift monitoring.
 
 Reference = `split.train` (the fit-only steps 1-29 the champion was trained on — never
-val/test, per CLAUDE.md Directive 3). Current = each later time step (30-49) in turn.
+val/test). Current = each later time step (30-49) in turn.
 
 Uses Evidently 0.7.x's `Report`/`Dataset`/`DataDefinition` API (the pre-0.7 `ColumnMapping`
 API is gone). Feature drift and target drift are computed as two independent Evidently
@@ -11,7 +11,7 @@ calls, not folded into one report:
     — deliberately excludes `time_step`, which trivially differs from the reference range
     by construction and would inflate every window's drifted-column count regardless of
     real distributional shift).
-  - Target drift uses labeled nodes only (D-002's labeled-only convention, matching
+  - Target drift uses labeled nodes only (matching
     `src/data/eda.py`'s illicit-rate denominator) so unknown-labeled rows don't dilute the
     comparison.
 """

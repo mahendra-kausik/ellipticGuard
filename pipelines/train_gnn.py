@@ -1,10 +1,10 @@
-"""DVC stage entrypoint (Layer 8, optional): GCN / GraphSAGE / EvolveGCN comparison.
+"""DVC stage entrypoint (optional): GCN / GraphSAGE / EvolveGCN comparison.
 
 Same split, same 165 features, same preprocessor, same class weight, same
-`evaluate()` code as the XGBoost champion (see src/models/gnn.py and D-030) —
+`evaluate()` code as the XGBoost champion (see src/models/gnn.py) —
 only the layer type varies between the three models. Comparison models, not
 serving candidates: nothing here is registered in the MLflow model registry
-(mirrors Layer 6's choice for the calibrated model).
+(mirrors the calibrated model's own choice not to register).
 
 Run from the repo root: `python pipelines/train_gnn.py`
 """
@@ -55,7 +55,7 @@ def main() -> None:
         test_start=split_params["test_start"],
         test_end=split_params["test_end"],
     )
-    # Fit-only slice (1..val_start-1) — never fit on val/test (CLAUDE.md Directive 3).
+    # Fit-only slice (1..val_start-1) — never fit on val/test.
     preprocessor = fit_preprocessor(split.train[FEATURE_COLS])
     snapshots = build_snapshots(nodes_df, edges_df, preprocessor)
     snapshots.sort(key=lambda s: s.time_step)

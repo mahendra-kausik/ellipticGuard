@@ -1,12 +1,12 @@
-"""DVC stage entrypoint (Layer 6): per-time-step F1 curve, calibration, lean SHAP.
+"""DVC stage entrypoint: per-time-step F1 curve, calibration, lean SHAP.
 
 Run from the repo root: `python pipelines/evaluate_champion.py`
 
-Uses the champion feature set + tuned params from Layer 5's
+Uses the champion feature set + tuned params from
 `advanced_metrics.json`, but refits on train-only (steps 1-29) so val
 (30-34) stays a clean calibration holdout. Test (35-49) is touched only for
 final scoring (per-step F1 curve, Brier). The calibrated model is logged to
-MLflow but NOT registered — Layer 7 decides what to serve (see D-023).
+MLflow but NOT registered — the serving layer decides what to serve.
 """
 import json
 import os
@@ -120,7 +120,7 @@ def main() -> None:
     else:
         print("\nSHAP skipped (see warning above).")
 
-    # 5. Log to MLflow — produce + log only, do NOT register (D-023).
+    # 5. Log to MLflow — produce + log only, do NOT register.
     mlflow.set_experiment(EXPERIMENT_NAME)
     with mlflow.start_run(run_name="champion_evaluation"):
         mlflow.set_tag("feature_set", champion_name)

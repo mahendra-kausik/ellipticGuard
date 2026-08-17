@@ -1,7 +1,8 @@
-"""Baseline models (Layer 3): Logistic Regression + Random Forest on the provided 166 features.
+"""Baseline models: Logistic Regression + Random Forest on the provided 166 features.
 
-Scaler/imputer are fit on `split.train` only (CLAUDE.md Directive 3). Headline metrics
-are illicit-class precision/recall/F1 + AUC-PR; accuracy is never reported (D-003).
+Scaler/imputer are fit on `split.train` only — never on val/test. Headline metrics
+are illicit-class precision/recall/F1 + AUC-PR; accuracy is never reported (the
+classes are ~90/10 imbalanced, so accuracy would be misleading).
 """
 from dataclasses import dataclass
 
@@ -23,7 +24,7 @@ from src.data.loaders import FEATURE_COLS, MODEL_FEATURE_COLS  # re-exported, se
 
 
 def build_xy(nodes_df: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series]:
-    """Filter to labeled rows only (D-002) and split into X/y."""
+    """Filter to labeled rows only and split into X/y."""
     labeled = nodes_df[nodes_df["label"].notna()]
     return labeled[MODEL_FEATURE_COLS], labeled["label"].astype(int)
 
@@ -67,7 +68,7 @@ def train_random_forest(
 
 
 def evaluate(model, X: np.ndarray, y: pd.Series) -> dict:
-    """Illicit-class (positive=1) precision/recall/F1 + AUC-PR + confusion matrix. No accuracy (D-003)."""
+    """Illicit-class (positive=1) precision/recall/F1 + AUC-PR + confusion matrix. No accuracy — misleading under class imbalance."""
     y_pred = model.predict(X)
     y_proba = model.predict_proba(X)[:, 1]
     tn, fp, fn, tp = confusion_matrix(y, y_pred, labels=[0, 1]).ravel()

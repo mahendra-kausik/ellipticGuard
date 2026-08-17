@@ -1,6 +1,6 @@
-"""Per-time-step EDA (Layer 2): node counts and illicit rate by time step.
+"""Per-time-step EDA: node counts and illicit rate by time step.
 
-Illicit rate is reported over *labeled* nodes only (illicit + licit), per D-002 —
+Illicit rate is reported over *labeled* nodes only (illicit + licit) —
 unknown-labeled nodes are excluded from the rate denominator, not treated as licit.
 """
 import pandas as pd

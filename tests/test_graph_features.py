@@ -50,8 +50,7 @@ def test_hand_computed_tiny_subgraph():
 
 def test_features_are_per_time_step_only():
     """A node's features must not change when unrelated edges are added to a
-    different time step — the causal-by-construction guarantee (PROJECT_PLAN.md
-    Layer 4 gate)."""
+    different time step — the causal-by-construction guarantee."""
     nodes_df = pd.DataFrame(
         {"txId": ["A", "B", "X", "Y"], "time_step": [1, 1, 2, 2]}
     )

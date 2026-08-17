@@ -1,12 +1,12 @@
-"""DVC stage entrypoint (Layer 10): replay driver + drift-or-performance flag +
+"""DVC stage entrypoint: replay driver + drift-or-performance flag +
 champion/challenger promotion gate.
 
-Explicit simulation, not a live feed (PROJECT_PLAN.md §1): streams the fixed
-test-range time steps in order. The champion is the Layer 6 train-only model
+Explicit simulation, not a live feed: streams the fixed
+test-range time steps in order. The champion is the train-only model
 (steps 1-29, via `build_train_only_champion`) — the same model whose T43
-collapse Layer 6 already documented (per-step illicit-F1 0.855 mean pre-T43 to
+collapse was already documented during evaluation (per-step illicit-F1 0.855 mean pre-T43 to
 0.028 post-T43). Reusing it ties this replay's story directly to that prior
-evidence instead of inventing a new artificial baseline. See D-026.
+evidence instead of inventing a new artificial baseline.
 
 Run from the repo root: `python pipelines/replay_retraining.py`
 """
@@ -92,7 +92,7 @@ def main() -> None:
     # Uses the REGISTERED (v2, train+val-fit) champion's test illicit-F1 from
     # Layer 5 — the real serving-quality number — not this stage's train-only
     # replay champion (whose F1 is logged above for replay context only; it's
-    # intentionally lower since val is held out from its fit, per Layer 6/D-023).
+    # intentionally lower since val is held out from its fit).
     METRICS_DIR.mkdir(exist_ok=True)
     registered_champion_f1 = advanced_metrics["provided"]["test_metrics"]["illicit_f1"]
     quality_gate = {

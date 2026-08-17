@@ -1,10 +1,10 @@
-"""Champion evaluation (Layer 6): per-time-step F1 curve, calibration, lean SHAP.
+"""Champion evaluation: per-time-step F1 curve, calibration, lean SHAP.
 
 The base model here is refit on train ONLY (steps 1-29), not train+val like the
 registered v2 champion — this keeps the val slice (30-34) genuinely held out to
-use as a calibration set (CLAUDE.md Directive 3: never fit a calibration model
+use as a calibration set (never fit a calibration model
 on anything but the train partition; val is the sanctioned tuning/calibration
-holdout, test stays untouched until final scoring). See D-023.
+holdout, test stays untouched until final scoring).
 """
 import warnings
 

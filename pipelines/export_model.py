@@ -1,4 +1,4 @@
-"""Deployment utility (Layer 11): export the @production model to a shippable directory.
+"""Deployment utility: export the @production model to a shippable directory.
 
 The container cannot use the MLflow registry: `mlruns/` and `mlflow.db` are git-ignored
 (HF Spaces builds from a git repo), and `mlflow.db` bakes absolute Windows artifact paths
@@ -7,7 +7,7 @@ into `model_versions.source` — so even committing the registry would leave a l
 *here*, on the machine that owns the registry, and ship only the ~1MB artifact.
 
 The alias still decides *what* ships; the container just loads the path via MODEL_URI.
-See DECISIONS.md D-028. Idempotent: re-run after every promotion.
+Idempotent: re-run after every promotion.
 
 Run from the repo root: `python pipelines/export_model.py`
 """

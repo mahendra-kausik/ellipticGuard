@@ -1,8 +1,8 @@
-"""Advanced model (Layer 5): XGBoost on provided + graph features.
+"""Advanced model: XGBoost on provided + graph features.
 
-Imbalance handled via `scale_pos_weight` (vs RF's `class_weight` in Layer 3 — see
-DECISIONS.md). Hyperparameters are tuned on the `val` slice only (steps 30-34);
-`test` is touched once, at final evaluation (CLAUDE.md Directive 3). XGBoost
+Imbalance handled via `scale_pos_weight` (vs RF's `class_weight` in the baseline
+model). Hyperparameters are tuned on the `val` slice only (steps 30-34);
+`test` is touched once, at final evaluation. XGBoost
 handles NaN natively, so there is no imputer/scaler to fit.
 """
 import itertools
@@ -13,7 +13,7 @@ from xgboost import XGBClassifier
 from src.features.graph import GRAPH_FEATURE_COLS
 from src.models.baseline import MODEL_FEATURE_COLS, evaluate
 
-PROVIDED_FEATURE_COLS = MODEL_FEATURE_COLS  # 166 provided features (Layer 3)
+PROVIDED_FEATURE_COLS = MODEL_FEATURE_COLS  # 166 provided features
 ALL_FEATURE_COLS = MODEL_FEATURE_COLS + GRAPH_FEATURE_COLS  # 166 + 7 = 173
 
 
@@ -30,7 +30,7 @@ def merge_graph_features(nodes_df: pd.DataFrame, graph_df: pd.DataFrame) -> pd.D
 
 
 def build_xy_features(df: pd.DataFrame, feature_cols: list[str]) -> tuple[pd.DataFrame, pd.Series]:
-    """Filter to labeled rows (D-002) and select the given feature columns."""
+    """Filter to labeled rows and select the given feature columns."""
     labeled = df[df["label"].notna()]
     return labeled[feature_cols], labeled["label"].astype(int)
 

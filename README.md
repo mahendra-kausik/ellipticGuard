@@ -68,7 +68,7 @@ uvicorn src.serving.app:app --reload
 curl localhost:8000/health
 ```
 
-**Build the container** (what the deployed Space/service runs — verified serving a real illicit row at p=0.9946 and a real licit row at p=0.0253, with no MLflow registry inside the container). The image installs `requirements-serve.txt`, not `requirements.txt` — mlflow, dvc, shap, matplotlib, and evidently are training/CI dependencies the serving path never imports (D-034), which cut the image from 919 MB to 300 MB content size:
+**Build the container** (what the deployed Space/service runs — verified serving a real illicit row at p=0.9946 and a real licit row at p=0.0253, with no MLflow registry inside the container). The image installs `requirements-serve.txt`, not `requirements.txt` — mlflow, dvc, shap, matplotlib, and evidently are training/CI dependencies the serving path never imports, which cut the image from 919 MB to 300 MB content size:
 
 ```bash
 python pipelines/export_model.py             # alias -> api/model/ weights
@@ -93,11 +93,11 @@ All figures measured on the **test window (time steps 35–49)**, which is stric
 
 Reference: Weber et al. 2019 ([arXiv:1908.02591](https://arxiv.org/abs/1908.02591)) report RF ≈ 0.788 illicit-F1 on the same temporal split. Our RF measured 0.752 and our XGBoost champion 0.806 — reported as measured, not tuned toward their number.
 
-**The graph features did not win.** Seven causal per-time-step topology features (in/out-degree, unique neighbors, PageRank, clustering coefficient, component size, avg neighbor degree) produced a *marginal AUC-PR edge* but slightly **lower** F1 than the provided 166 features alone. The champion was selected on test F1, so the provided-only model won. The likely reason: the dataset's own 72 "aggregated" features already encode one-hop neighborhood information, leaving topology position largely redundant (D-021, D-022).
+**The graph features did not win.** Seven causal per-time-step topology features (in/out-degree, unique neighbors, PageRank, clustering coefficient, component size, avg neighbor degree) produced a *marginal AUC-PR edge* but slightly **lower** F1 than the provided 166 features alone. The champion was selected on test F1, so the provided-only model won. The likely reason: the dataset's own 72 "aggregated" features already encode one-hop neighborhood information, leaving topology position largely redundant.
 
-**GNNs lose to the champion (optional Layer 8).** GCN, GraphSAGE, and EvolveGCN were re-implemented from scratch in plain PyTorch (no PyTorch Geometric — the graph is small enough that hand-rolled sparse adjacency ops run in minutes on CPU), trained under the *exact same* split, features, preprocessor, class weight, and `evaluate()` code as the classical models (mean ± std across 3 seeds each). All three lose to the XGBoost champion — consistent with Weber et al.'s own table, where RF beat every GNN they tried. The table above uses a 200-epoch/patience-20 budget (raised from an initial 60/8 after a diagnostic showed real headroom — see D-032): GCN improved 0.450→0.554 and GraphSAGE 0.496→0.565 with the larger, still-equal-across-models budget, while EvolveGCN reproduced to the exact same 0.120 either way, indicating its ceiling is architectural (the truncated BPTT window) rather than budget-limited. GCN and GraphSAGE still sit well under the published ≈0.628 GCN figure for the same architecture; the remaining gap is a genuine train→test generalization effect, not an implementation bug — the per-time-step curve below shows all three GNNs also collapsing at step 43, independently corroborating the drift story. Full reasoning in `DECISIONS.md` D-030/D-031/D-032.
+**GNNs lose to the champion (optional Layer 8).** GCN, GraphSAGE, and EvolveGCN were re-implemented from scratch in plain PyTorch (no PyTorch Geometric — the graph is small enough that hand-rolled sparse adjacency ops run in minutes on CPU), trained under the *exact same* split, features, preprocessor, class weight, and `evaluate()` code as the classical models (mean ± std across 3 seeds each). All three lose to the XGBoost champion — consistent with Weber et al.'s own table, where RF beat every GNN they tried. The table above uses a 200-epoch/patience-20 budget (raised from an initial 60/8 after a diagnostic showed real headroom): GCN improved 0.450→0.554 and GraphSAGE 0.496→0.565 with the larger, still-equal-across-models budget, while EvolveGCN reproduced to the exact same 0.120 either way, indicating its ceiling is architectural (the truncated BPTT window) rather than budget-limited. GCN and GraphSAGE still sit well under the published ≈0.628 GCN figure for the same architecture; the remaining gap is a genuine train→test generalization effect, not an implementation bug — the per-time-step curve below shows all three GNNs also collapsing at step 43, independently corroborating the drift story.
 
-**Calibration** (test Brier, lower is better): uncalibrated 0.0268 → **0.0264** with sigmoid (isotonic 0.0266). The margin is small enough that the served model returns a raw, honestly-labeled probability rather than a calibrated field borrowed from a different base model (D-023, D-024).
+**Calibration** (test Brier, lower is better): uncalibrated 0.0268 → **0.0264** with sigmoid (isotonic 0.0266). The margin is small enough that the served model returns a raw, honestly-labeled probability rather than a calibrated field borrowed from a different base model.
 
 ## The T43 drift story
 
@@ -110,17 +110,17 @@ What the monitoring found (Layer 9):
 - **Feature drift is flat.** Evidently's share-of-drifted-columns fluctuates 0.45–0.76 across steps 30–49 with no trend (corr with time step = 0.06; 0.583 pre-T43 vs 0.605 post-T43). A feature-drift alarm alone would **not** have caught this.
 - **Target drift spikes.** The `label` column's drift score averages 0.052 for steps 30–42 vs **0.117** for steps 43–49 — the four highest values in the entire series are steps 43–46. This lines up exactly with the F1 collapse.
 
-That gap is the finding: **the failure was invisible in the feature distribution and only visible in the labels.** A production system relying on label-free feature drift monitoring would have missed it entirely — which is a real monitoring blind spot, not a footnote (D-025).
+That gap is the finding: **the failure was invisible in the feature distribution and only visible in the labels.** A production system relying on label-free feature drift monitoring would have missed it entirely — which is a real monitoring blind spot, not a footnote.
 
-This is also why the project deliberately does not use label-free performance estimation such as NannyML's CBPE: it infers performance from predicted probabilities assuming `P(y|X)` is stable, so it inherits the same blind spot and would have reported healthy performance straight through the collapse (D-033).
+This is also why the project deliberately does not use label-free performance estimation such as NannyML's CBPE: it infers performance from predicted probabilities assuming `P(y|X)` is stable, so it inherits the same blind spot and would have reported healthy performance straight through the collapse.
 
 What the retraining loop found (Layer 10): the replay's drift-or-performance flag fires from step 43 onward, and champion/challenger correctly **promotes** in routine steps (e.g. step 39: challenger F1 0.968 vs champion 0.884) but **holds** at steps 43 and 45, where a challenger trained on everything before the step still cannot beat the champion — both score near zero. Later challengers recover only partially (F1 0.19–0.90) and never approach the ~0.85 pre-collapse level.
 
-**Conclusion: T43 is a regime change, not a staleness problem.** More training data doesn't help when the thing you're detecting has changed shape. The correct response is escalation to a human analyst, and the loop is designed to hold rather than promote a model that merely looks new (D-023, D-026).
+**Conclusion: T43 is a regime change, not a staleness problem.** More training data doesn't help when the thing you're detecting has changed shape. The correct response is escalation to a human analyst, and the loop is designed to hold rather than promote a model that merely looks new.
 
 ## Running the service
 
-**Hosting venue:** Google Cloud Run, not the originally planned Hugging Face Spaces — HF moved Docker (and Gradio) Spaces behind a paid plan, leaving only static Spaces free, which can't run a Python process (D-029). Cloud Run runs on the owner's existing GCP trial credit rather than a pure always-free tier, so once live this will be a **deliberately time-limited demo**, expected to stop working around the trial's ~3-month mark (D-034). `docker run -p 7860:7860 ellipticguard` is the permanent, always-reproducible path — the live URL is a convenience on top of it, not the source of truth.
+**Hosting venue:** Google Cloud Run, not the originally planned Hugging Face Spaces — HF moved Docker (and Gradio) Spaces behind a paid plan, leaving only static Spaces free, which can't run a Python process. Cloud Run runs on the owner's existing GCP trial credit rather than a pure always-free tier, so once live this will be a **deliberately time-limited demo**, expected to stop working around the trial's ~3-month mark. `docker run -p 7860:7860 ellipticguard` is the permanent, always-reproducible path — the live URL is a convenience on top of it, not the source of truth.
 
 **Live URL:** https://ellipticguard-507124978062.us-central1.run.app — deployed 2026-07-31, expected to run until the GCP trial credit or period lapses (~3 months out), after which `docker run` below is the durable path.
 
@@ -156,12 +156,12 @@ Endpoints: `POST /predict` · `GET /health` · `GET /metrics` (request count, p5
 
 Stated plainly, because each one is a real gap:
 
-- **The deployed container loads weights from a path, not the registry.** Locally, the app resolves `models:/elliptic-illicit@production` — the registry is the source of truth. But `mlflow.db` bakes absolute Windows artifact paths into `model_versions.source`, so the container can't query it; `pipelines/export_model.py` resolves the alias at build time and ships the ~1 MB artifact instead. The alias still decides *what* ships, but the running Space resolves `/app/model`. A hosted MLflow tracking server is the real fix and would remove this entirely (D-028).
+- **The deployed container loads weights from a path, not the registry.** Locally, the app resolves `models:/elliptic-illicit@production` — the registry is the source of truth. But `mlflow.db` bakes absolute Windows artifact paths into `model_versions.source`, so the container can't query it; `pipelines/export_model.py` resolves the alias at build time and ships the ~1 MB artifact instead. The alias still decides *what* ships, but the running Space resolves `/app/model`. A hosted MLflow tracking server is the real fix and would remove this entirely.
 - **`PREDICT_THRESHOLD` is 0.5, untuned.** A sensible default, not an operating point chosen from a precision/recall tradeoff.
-- **Live URL is time-limited by design.** HF Spaces' free tier dropped Docker support mid-build (D-029); the replacement is Google Cloud Run, on the owner's existing GCP trial credit — a deliberate, time-limited exception to this project's free-tier-only rule (D-034). https://ellipticguard-507124978062.us-central1.run.app is live and verified as of 2026-07-31, but is expected to stop working once the trial credit or period lapses (~3 months out) — `docker run` remains the permanent reproduction path.
+- **Live URL is time-limited by design.** HF Spaces' free tier dropped Docker support mid-build; the replacement is Google Cloud Run, on the owner's existing GCP trial credit — a deliberate, time-limited exception to this project's free-tier-only rule. https://ellipticguard-507124978062.us-central1.run.app is live and verified as of 2026-07-31, but is expected to stop working once the trial credit or period lapses (~3 months out) — `docker run` remains the permanent reproduction path.
 - **No GNN comparison.** Layer 8 (static GCN / EvolveGCN, reference figures ≈ 0.63 / 0.72) was scoped as nice-to-have and skipped in favor of finishing the serving, monitoring, and retraining layers. A clean classical model with honest validation and a live deployment beats a half-finished GNN.
 - **The 72 aggregated features are opaque.** They're anonymized by the dataset's publisher, so the SHAP ranking (`feat_52`, `feat_58`, `feat_89` lead) identifies *which* features matter but cannot say what they mean.
-- **Unknown-labeled nodes (157,205 of 203,769) are excluded** from supervised training and evaluation. They're kept in the assembled table for graph structure, but the operative class balance is ~9.8% illicit over the 46,564 labeled nodes (D-002, D-016).
+- **Unknown-labeled nodes (157,205 of 203,769) are excluded** from supervised training and evaluation. They're kept in the assembled table for graph structure, but the operative class balance is ~9.8% illicit over the 46,564 labeled nodes.
 
 ## Resume metrics
 
@@ -173,15 +173,9 @@ Stated plainly, because each one is a real gap:
 **System / MLOps**
 - Inference latency: **p50 0.73 ms, p95 6.48 ms** (CPU, in-process; target was < 100 ms)
 - Model size: **1.1 MB** (target was < 50 MB)
-- Serving image size: **919 MB → 300 MB** (content size) by separating training/tracking dependencies from the inference path (D-034)
+- Serving image size: **919 MB → 300 MB** (content size) by separating training/tracking dependencies from the inference path
 - Reproducibility: `dvc repro` rebuilds the full pipeline from raw CSVs in one command
 - Retraining cadence: per replayed time step, gated on a drift-or-performance flag
 - Drift detection: target drift spikes at the exact step of the F1 collapse (T43)
 - CI: GitHub Actions, data-free (`pytest -m "not needs_data"` + an F1 ≥ 0.6 quality gate)
 - Tests: 27 passing, including leakage guards on the temporal split and every fitted transform
-
-## Project documentation
-
-- `PROJECT_PLAN.md` — the layered build plan and per-layer acceptance gates
-- `DECISIONS.md` — every non-trivial decision, with alternatives and tradeoffs (D-001…D-028)
-- `SESSION_LOG.md` — layer status and per-session gate evidence

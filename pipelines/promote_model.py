@@ -1,7 +1,7 @@
-"""DVC-adjacent utility (Layer 7): promote the serving-candidate model to @production.
+"""DVC-adjacent utility: promote the serving-candidate model to @production.
 
-MLflow 3.x stages (Staging/Production) are deprecated in favor of aliases (D-020's sqlite
-backend supports them fine). Idempotent: safe to re-run any time a new champion is trained.
+MLflow 3.x stages (Staging/Production) are deprecated in favor of aliases (the sqlite
+tracking backend supports them fine). Idempotent: safe to re-run any time a new champion is trained.
 
 Run from the repo root: `python pipelines/promote_model.py`
 """

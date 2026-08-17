@@ -1,18 +1,18 @@
-"""FastAPI serving app (Layer 7).
+"""FastAPI serving app.
 
 Loads the Production model (`models:/<name>@production`, set by
 `pipelines/promote_model.py`) from the MLflow registry — never a hardcoded path.
 In the deployed container there is no registry to query, so MODEL_URI points at weights
-exported from that same alias at build time (D-028).
-Serves the champion's raw probability: Layer 6 (D-023) found the registered v2 has
+exported from that same alias at build time.
+Serves the champion's raw probability: evaluation found the registered v2 has
 no leakage-free holdout left to calibrate on, and is already near-calibrated
 (test Brier 0.0268 -> 0.0264 with sigmoid calibration on a different base model) —
-so a raw, honestly-labeled probability is the served score. See DECISIONS.md D-024.
+so a raw, honestly-labeled probability is the served score.
 
 The deployed image installs `requirements-serve.txt`, not the full `requirements.txt` —
 mlflow (and everything it drags in: sqlalchemy, alembic, pyarrow, flask) is a training/
 tracking dependency the container never needs, since MODEL_URI is a local directory
-there. It's imported lazily, only on the local-dev registry path. See DECISIONS.md D-034.
+there. It's imported lazily, only on the local-dev registry path.
 """
 import logging
 import os
@@ -52,14 +52,14 @@ THRESHOLD = float(os.environ.get("PREDICT_THRESHOLD", 0.5))
 
 # The registry is the default source of truth. MODEL_URI/MODEL_VERSION exist only for the
 # deployed container, which has no mlflow.db to query — `pipelines/export_model.py` resolves
-# the alias at build time and bakes the weights in. See DECISIONS.md D-028.
+# the alias at build time and bakes the weights in.
 MODEL_URI = os.environ.get("MODEL_URI") or f"models:/{REGISTRY_NAME}@production"
 
 
 def _load_from_registry():
     """Only reached on the local-dev path (MODEL_URI is a registry URI, not a directory).
     mlflow is imported here, not at module level, so the slim serving image — which never
-    installs it — can import this module at all. See DECISIONS.md D-034."""
+    installs it — can import this module at all."""
     import mlflow.xgboost
     from mlflow.tracking import MlflowClient
 
@@ -72,7 +72,7 @@ def _load_from_registry():
 @lru_cache(maxsize=1)
 def get_model():
     path = Path(MODEL_URI)
-    if path.is_dir():  # exported weights (container) — no mlflow needed (D-034)
+    if path.is_dir():  # exported weights (container) — no mlflow needed
         model = xgboost.XGBClassifier()
         model.load_model(str(path / "model.ubj"))
         return model

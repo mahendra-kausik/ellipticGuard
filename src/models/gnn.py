@@ -1,11 +1,12 @@
-"""GNN comparison models (Layer 8, optional): GCN, GraphSAGE, EvolveGCN.
+"""GNN comparison models (optional): GCN, GraphSAGE, EvolveGCN.
 
-Re-implemented in plain PyTorch (not PyTorch Geometric — see DECISIONS.md D-030)
+Re-implemented in plain PyTorch (not PyTorch Geometric — the graph is small
+enough that hand-rolled sparse adjacency ops run in minutes on CPU)
 under our own temporal split, so the comparison to the XGBoost champion is
 provably fair: same split, same 165 features, same preprocessor, same
-`evaluate()` metric code. The owner's notebooks were audited and rejected as a
+`evaluate()` metric code. The owner's prior notebooks were audited and rejected as a
 usable comparison (mismatched class weights, a floor-effect artifact in the
-headline claim, a stale-state export bug, a different split) — see D-030.
+headline claim, a stale-state export bug, a different split).
 """
 from dataclasses import dataclass
 

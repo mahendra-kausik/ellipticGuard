@@ -3,7 +3,7 @@
 # Install: pip install -r requirements.txt
 #
 # Pins use >= to stay non-breaking but flexible.
-# If you hit a conflict, pin the offending package more tightly and log it in DECISIONS.md.
+# If you hit a conflict, pin the offending package more tightly.
 # GNN dependencies (torch, torch-geometric) are NOT listed here — install them separately
 # on Colab when you reach optional Layer 8. They are too heavy for the core CPU environment.
 

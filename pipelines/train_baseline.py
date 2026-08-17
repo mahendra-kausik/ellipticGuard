@@ -30,7 +30,7 @@ PARAMS_PATH = REPO_ROOT / "params.yaml"
 
 # MLflow 3.x has put the plain filesystem store ('./mlruns') into maintenance mode —
 # it raises unless MLFLOW_ALLOW_FILE_STORE is set. A local sqlite file is still a free,
-# local, no-server backend, so that's the default here instead (see DECISIONS.md D-020).
+# local, no-server backend, so that's the default here instead.
 mlflow.set_tracking_uri(os.environ.get("MLFLOW_TRACKING_URI") or f"sqlite:///{REPO_ROOT / 'mlflow.db'}")
 EXPERIMENT_NAME = os.environ.get("MLFLOW_EXPERIMENT_NAME", "elliptic-aml")
 REGISTRY_NAME = os.environ.get("MLFLOW_REGISTERED_MODEL_NAME", "elliptic-illicit")

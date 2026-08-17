@@ -1,4 +1,4 @@
-# requirements-serve.txt — EllipticGuard serving image ONLY (D-034).
+# requirements-serve.txt — EllipticGuard serving image ONLY.
 # The full requirements.txt (dvc, mlflow, shap, matplotlib, evidently, pytest, ...) is the
 # dev/training/CI environment. /predict needs none of it: get_model() loads model.ubj via
 # xgboost.XGBClassifier directly from MODEL_URI, which is a plain directory in the deployed

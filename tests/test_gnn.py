@@ -1,8 +1,8 @@
-"""Layer 8 (optional) — GNN module tests. Data-free, synthetic fixtures only.
+"""GNN module tests (optional). Data-free, synthetic fixtures only.
 
 `importorskip` keeps lean CI (`pytest -m "not needs_data"`) green without
 installing torch — these tests need no real data (so `needs_data` would be the
-wrong marker), they just need torch, which CI doesn't install (D-030).
+wrong marker), they just need torch, which CI doesn't install.
 """
 import numpy as np
 import pandas as pd

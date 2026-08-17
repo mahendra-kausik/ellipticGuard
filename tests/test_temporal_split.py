@@ -17,7 +17,7 @@ def _load():
 @pytest.mark.needs_data
 def test_no_cross_time_step_edges():
     """(c) Edges never cross time steps — the premise that makes per-step graph
-    features causal by construction (PROJECT_PLAN.md §2)."""
+    features causal by construction."""
     nodes_df, edges_df = _load()
     txid_to_step = nodes_df.set_index("txId")["time_step"]
     step1 = edges_df["txId1"].map(txid_to_step)

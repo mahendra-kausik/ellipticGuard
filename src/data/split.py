@@ -1,11 +1,11 @@
-"""Temporal split harness (Layer 2) — the ONLY sanctioned way to partition data downstream.
+"""Temporal split harness — the ONLY sanctioned way to partition data downstream.
 
 train = time steps 1..val_start-1, used for fitting scalers/imputers/models.
 val   = time steps val_start..train_end, held out from fitting for tuning/threshold
         selection (carved from the *tail* of the training range, never the future).
 test  = time steps test_start..test_end, untouched until final evaluation.
 
-Never random — see CLAUDE.md Directive 3 / DECISIONS.md D-001.
+Never random — a shuffle would leak future information into training.
 """
 from dataclasses import dataclass
 

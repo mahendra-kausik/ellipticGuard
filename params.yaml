@@ -3,22 +3,22 @@
 split:
   # Temporal split (Layer 2). train = steps < val_start; val = [val_start, train_end]
   # (carved from the tail of the training range); test = [test_start, test_end].
-  # See PROJECT_PLAN.md Layer 2 / DECISIONS.md D-001 — never change to a random split.
+  # Never change to a random split — that would leak future information into training.
   train_end: 34
   val_start: 30
   test_start: 35
   test_end: 49
 
 baseline:
-  # Layer 3 — LR + RF baselines. class_weight="balanced" handles imbalance (D-008 applies
-  # class-weight strategy from the start; SMOTE-style resampling is out per that decision).
+  # LR + RF baselines. class_weight="balanced" handles imbalance from the start;
+  # SMOTE-style resampling was ruled out in favor of this simpler approach.
   random_state: 42
   lr_max_iter: 1000
   rf_n_estimators: 100
   rf_max_depth: null
 
 advanced:
-  # Layer 5 — XGBoost champion. scale_pos_weight handles imbalance (see D-022).
+  # XGBoost champion. scale_pos_weight handles imbalance.
   # grid is a small manual search, scored on the val slice only (never test).
   random_state: 42
   grid:
@@ -27,25 +27,25 @@ advanced:
     n_estimators: [200, 400]
 
 evaluate:
-  # Layer 6 — calibration methods compared on test Brier (calibrator fit on val
-  # only, cv="prefit"); lean SHAP sample size/top-N. See D-023.
+  # Calibration methods compared on test Brier (calibrator fit on val
+  # only, cv="prefit"); lean SHAP sample size/top-N.
   calibration_methods: [sigmoid, isotonic]
   shap_sample: 2000
   shap_top_n: 15
 
 monitor:
-  # Layer 9 — Evidently drift reference is always split.train (steps 1-29, fit-only).
+  # Evidently drift reference is always split.train (steps 1-29, fit-only).
   # report_step picks one late window to render as a full human-readable HTML report;
-  # 43 is the T43 regime-change step already surfaced in Layer 6 (D-023).
+  # 43 is the T43 regime-change step already surfaced during evaluation.
   report_step: 43
 
 gnn:
-  # Layer 8 (optional) — GCN / GraphSAGE / EvolveGCN comparison, plain torch (D-030).
+  # GCN / GraphSAGE / EvolveGCN comparison, plain torch (optional).
   # Every knob here is identical across all three models — that equality is the
   # fairness claim the comparison rests on. class_weight is NOT set here: it's
   # derived per run via scale_pos_weight() on split.train, the same derivation
-  # XGBoost's champion already uses (see D-030), so there's one shared number to
-  # defend, not three hand-picked ones (the notebooks used [1,9] vs [1,5]).
+  # XGBoost's champion already uses, so there's one shared number to
+  # defend, not three hand-picked ones.
   hidden1: 64
   hidden2: 32
   dropout: 0.5
@@ -54,7 +54,7 @@ gnn:
   # max_epochs/patience raised from 60/8 to match the notebooks' own budget
   # (200/20) after a diagnostic showed the smaller budget was leaving real
   # signal on the table (GCN seed 0: val F1 0.41 -> 0.77 with the bigger
-  # budget) without closing the whole gap to the literature figure (D-032).
+  # budget) without closing the whole gap to the literature figure.
   # Still identical across all three models -- the fairness property holds.
   max_epochs: 200
   patience: 20

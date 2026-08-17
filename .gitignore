@@ -13,3 +13,14 @@ dist/
 .venv/
 venv/
 CODE_TOUR.md
+
+# internal working docs (not part of the public deliverable)
+CLAUDE.md
+DECISIONS.md
+SESSION_LOG.md
+PROJECT_PLAN.md
+RESUME_DEFENSE.md
+FLASHCARDS.md
+EllipticGuard-ProjectInfo.md
+notebooks/
+.claude/

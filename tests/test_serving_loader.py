@@ -1,9 +1,9 @@
-"""Layer 11 (D-034): the slimmed serving image loads model.ubj directly via
+"""The slimmed serving image loads model.ubj directly via
 xgboost.XGBClassifier instead of mlflow.xgboost.load_model, to drop mlflow from the
 serving path. Prove the two loaders agree on real weights — silent numeric divergence
 between them is the one failure this change could plausibly introduce.
 
-Data-free: reads the exported weights committed at api/model/ (see D-028), not the raw
+Data-free: reads the exported weights committed at api/model/, not the raw
 Elliptic dataset — runs in CI, no `needs_data` marker.
 """
 import numpy as np

@@ -1,13 +1,13 @@
-"""Retraining loop & replay (Layer 10): stream the 49 fixed time steps in
+"""Retraining loop & replay: stream the 49 fixed time steps in
 sequence, fire a drift-or-performance flag, and run a champion/challenger
 promotion check.
 
-There is no live feed (PROJECT_PLAN.md §1) — this is an explicit replay/
+There is no live feed — this is an explicit replay/
 simulation of streaming over the dataset's own time steps, not real online
-learning. The champion passed in by the pipeline entrypoint is the Layer 6
-train-only champion (steps 1-29) — the same model whose T43 collapse Layer 6
-already documented — so the replay's story ties directly to that prior
-evidence rather than an artificial staleness knob. See D-026.
+learning. The champion passed in by the pipeline entrypoint is the
+train-only champion (steps 1-29) — the same model whose T43 collapse was
+already documented during evaluation — so the replay's story ties directly to that prior
+evidence rather than an artificial staleness knob.
 
 Reuses existing building blocks, no re-implementation:
   - `evaluate` (src/models/baseline.py) for illicit-F1 on a window.
@@ -32,7 +32,7 @@ def window_f1(model, df: pd.DataFrame, feature_cols: list[str], step: int) -> fl
 def flag_decision(f1: float | None, drift_score: float | None, f1_floor: float, drift_ceiling: float) -> dict:
     """Fires when the window's illicit-F1 drops below the floor OR its target-drift
     score exceeds the ceiling. Either signal alone is sufficient — this is the
-    "drift-or-performance" flag from PROJECT_PLAN.md Layer 10."""
+    "drift-or-performance" flag."""
     reasons = []
     if f1 is not None and f1 < f1_floor:
         reasons.append(f"f1={f1:.3f} < floor={f1_floor}")
@@ -87,10 +87,10 @@ def run_replay(
     seen window in a real retraining loop. Training the challenger on the
     current step itself would let it trivially memorize that step's labels
     (in-sample F1=1.0 always, T43 included) and defeat the entire point of the
-    T43 demonstration — CLAUDE.md Directive 3 forbids that kind of leakage.
+    T43 demonstration — this kind of leakage is never allowed.
     The champion is NOT swapped mid-replay, so every step's promote/hold
     verdict is directly comparable. This is what lets one replay honestly
-    demonstrate all three PROJECT_PLAN.md Layer 10 gate behaviors: the flag
+    demonstrate all three of the retraining loop's gate behaviors: the flag
     firing at/after T43, a routine promote (a challenger with a bit more
     recent same-regime data edges out the champion), and a T43 hold (a
     challenger trained on everything before T43 still can't predict T43's own

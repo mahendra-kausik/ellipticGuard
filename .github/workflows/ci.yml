@@ -1,12 +1,12 @@
 name: CI
 
-# Lean, data-free CI (D-026): data/, mlruns/, and mlflow.db are git-ignored and
+# Lean, data-free CI: data/, mlruns/, and mlflow.db are git-ignored and
 # DVC-pulling them needs the Google Drive OAuth secret (the same auth that has
-# been flaky locally — see SESSION_LOG.md). So this workflow runs the
+# been flaky locally). So this workflow runs the
 # leakage/logic/unit test suite (tests not marked `needs_data`) plus a quality
 # gate against the committed metrics/quality_gate.json snapshot. It does NOT
 # run `dvc repro` or the data-dependent tests — those are demonstrated locally
-# and their evidence is recorded in SESSION_LOG.md.
+# instead.
 
 on:
   push:

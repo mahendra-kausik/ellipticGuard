@@ -1,6 +1,6 @@
 # The Dockerfile's COPY lines are selective, but `docker build .` and
 # `gcloud run deploy --source .` both upload the whole directory as build context BEFORE
-# any COPY runs. Without this file that upload includes .env — see DECISIONS.md D-034.
+# any COPY runs. Without this file that upload includes .env.
 .env
 .env.*
 !.env.example

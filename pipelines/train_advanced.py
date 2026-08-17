@@ -1,11 +1,11 @@
-"""DVC stage entrypoint (Layer 5): XGBoost champion + provided-vs-+graph experiments.
+"""DVC stage entrypoint: XGBoost champion + provided-vs-+graph experiments.
 
 Run from the repo root: `python pipelines/train_advanced.py`
 
 Tuning happens on val (steps 30-34) only. Once params are chosen, each feature
 set's model is refit on train+val (steps 1-34) and evaluated once on test
-(steps 35-49) — the gate comparison. See CLAUDE.md Directive 3 and the Layer 5
-plan for why this order is leakage-safe.
+(steps 35-49) — the gate comparison. This order is leakage-safe: no fitting
+ever touches test data.
 """
 import json
 import os
@@ -79,7 +79,7 @@ def main() -> None:
         spw = scale_pos_weight(y_train)
         best_params, val_f1 = tune_on_val(X_train, y_train, X_val, y_val, grid, spw, random_state)
 
-        # Refit champion-candidate on train+val with the chosen params (D-022).
+        # Refit champion-candidate on train+val with the chosen params.
         spw_trainval = scale_pos_weight(y_trainval)
         model = train_xgb(X_trainval, y_trainval, best_params, spw_trainval, random_state)
         test_metrics = evaluate(model, X_test, y_test)

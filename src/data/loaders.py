@@ -1,7 +1,7 @@
-"""Runtime-validated loaders for the raw Elliptic CSVs (Layer 1).
+"""Runtime-validated loaders for the raw Elliptic CSVs.
 
 Header presence and feature count differ across mirrors of this dataset, so we
-confirm both at load time instead of hardcoding assumptions (PROJECT_PLAN.md §2).
+confirm both at load time instead of hardcoding assumptions.
 """
 from pathlib import Path
 
@@ -10,8 +10,8 @@ import pandas as pd
 NUM_FEATURES = 165  # feat_0..feat_164; time_step is the paper's 166th ("first local") feature
 FEATURE_COLS = [f"feat_{i}" for i in range(NUM_FEATURES)]
 # Defined here (not in src/models/baseline.py) so the serving path can use it without
-# importing sklearn — src/models/baseline.py re-exports it for training-side callers (D-034).
-MODEL_FEATURE_COLS = ["time_step"] + FEATURE_COLS  # 166 features, per PROJECT_PLAN.md §2
+# importing sklearn — src/models/baseline.py re-exports it for training-side callers.
+MODEL_FEATURE_COLS = ["time_step"] + FEATURE_COLS  # 166 features total
 
 
 def load_features(path: Path) -> pd.DataFrame:
@@ -43,7 +43,7 @@ def assemble_node_table(features_df: pd.DataFrame, classes_df: pd.DataFrame) -> 
     """Join features + classes on txId and remap labels.
 
     illicit (1) -> 1, licit (2) -> 0, unknown -> NaN (excluded from supervised
-    train/eval downstream, per D-002; kept here so the row is still available
+    train/eval downstream; kept here so the row is still available
     for graph-structure use).
     """
     nodes_df = features_df.merge(classes_df, on="txId", how="left", validate="one_to_one")
